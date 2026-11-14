@@ -6,11 +6,13 @@ var BM = globalThis.BM;
   if (root.classList.contains('bm-embed')) return; // inside our viewer: CSS only
 
   // Source of truth is chrome.storage (set by the popup); mirror it to localStorage for early.js.
-  let enabled = true;
-  try { enabled = (await chrome.storage.local.get('enabled')).enabled !== false; } catch (_) {}
+  let s = {};
+  try { s = await chrome.storage.local.get(['enabled', 'aggressive']); } catch (_) {}
+  const enabled = s.enabled !== false;
+  BM.settings = { aggressive: enabled && s.aggressive === true };
   try { localStorage.setItem('bm:off', enabled ? '0' : '1'); } catch (_) {}
   try {
-    chrome.storage.onChanged.addListener((ch) => { if ('enabled' in ch) location.reload(); });
+    chrome.storage.onChanged.addListener((ch) => { if ('enabled' in ch || 'aggressive' in ch) location.reload(); });
   } catch (_) {}
   if (!enabled) { root.classList.remove('bm'); return; }
   root.classList.add('bm');

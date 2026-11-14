@@ -9,7 +9,9 @@
     h1 { font-size: 15px; font-weight: 600; margin: 0 0 4px; }
     p { color: #6b6b68; margin: 0 0 14px; font-size: 12.5px; line-height: 1.45; }
     label { display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 10px 0; border-top: 1px solid #e6e6e3; }
-    input { appearance: none; width: 36px; height: 20px; border-radius: 999px; background: #d6d6d2; position: relative; cursor: pointer; transition: background .15s; margin: 0; }
+    label small { display: block; color: #6b6b68; font-size: 11.5px; line-height: 1.35; margin-top: 2px; padding-right: 12px; }
+    input:disabled { opacity: .4; cursor: default; }
+    input { flex: none; appearance: none; width: 36px; height: 20px; border-radius: 999px; background: #d6d6d2; position: relative; cursor: pointer; transition: background .15s; margin: 0; }
     input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s; }
     input:checked { background: #2a5bd7; }
     input:checked::after { transform: translateX(16px); }
@@ -22,6 +24,10 @@
     <h1>BetterMoodle</h1>
     <p>A minimal UCL Moodle. Everything stays in your browser.</p>
     <label for="enabled">Enabled <input type="checkbox" id="enabled"></label>
+    <label for="aggressive">
+      <span>Aggressive mode<small>Hide General, Module Communication and Module Surveys on course pages</small></span>
+      <input type="checkbox" id="aggressive">
+    </label>
     <div class="keys">
       <kbd>Ctrl</kbd>/<kbd>⌘</kbd> <kbd>K</kbd> search everything<br>
       <kbd>/</kbd> filter a course<br>

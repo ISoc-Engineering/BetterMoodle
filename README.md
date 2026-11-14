@@ -22,6 +22,7 @@ No build step. It's plain JavaScript, so you can edit the files directly.
 | **Side viewer:** PDFs, images, pages, books and folders open in a resizable right panel. `j`/`k` or `↑`/`↓` step through files, `Esc` closes, Ctrl/⌘-click still opens a new tab. | course pages |
 | **Ctrl/⌘+K search** across courses, deadlines and every activity in every current course. Files open in the viewer. | everywhere |
 | Popup on/off toggle | toolbar |
+| **Aggressive mode** (popup setting): hides the General, Module Communication and Module Surveys sections on course pages so only teaching material is left. Ctrl+K still searches everything. | course pages |
 
 ## How it works
 

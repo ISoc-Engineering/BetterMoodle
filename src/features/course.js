@@ -24,12 +24,13 @@ BM.course = {
         onclick: () => { this.filter.chip = k; this.applyFilter(); },
       }, label)));
     this.statusEl = h('span', { class: 'bm-muted bm-small' });
+    this.modeEl = h('span', { class: 'bm-muted bm-small', title: 'Turn off in the BetterMoodle toolbar popup' });
     const toggle = h('button', { class: 'bm-link-btn', onclick: () => setClassic(!classic) });
     this.listEl = h('div', { class: 'bm-sections' }, h('p', { class: 'bm-muted' }, 'Loading course…'));
 
     this.root = h('div', { id: 'bm-course', class: 'bm-root' },
       this.dueEl,
-      h('div', { class: 'bm-filterbar' }, this.input, this.chipsEl, h('div', { class: 'bm-spacer' }), this.statusEl, toggle),
+      h('div', { class: 'bm-filterbar' }, this.input, this.chipsEl, h('div', { class: 'bm-spacer' }), this.statusEl, this.modeEl, toggle),
       this.listEl);
     anchor.before(this.root);
 
@@ -86,18 +87,28 @@ BM.course = {
   },
 
   viewables() {
-    return BM.courseData.items(this.model).filter((i) => BM.courseData.viewMode(i));
+    return BM.courseData.visibleSections(this.model).flatMap((s) => s.items).filter((i) => BM.courseData.viewMode(i));
   },
 
   openItem(id) {
-    const list = this.viewables();
-    if (list.some((i) => i.id === String(id))) BM.viewer.open(list, id);
+    let list = this.viewables();
+    // A file from a hidden section (e.g. opened via Ctrl+K) still opens, on its own.
+    if (!list.some((i) => i.id === String(id))) {
+      const it = BM.courseData.items(this.model).find((i) => i.id === String(id));
+      if (!it || !BM.courseData.viewMode(it)) return;
+      list = [it];
+    }
+    BM.viewer.open(list, id);
   },
 
   render() {
     const h = BM.h;
     const m = this.model;
-    const sections = m.sections.filter((s) => s.items.length);
+    const sections = BM.courseData.visibleSections(m);
+    const hidden = m.sections.filter((s) => s.items.length).length - sections.length;
+    // Shown whenever the mode is on, so it's obvious the page has picked up the setting.
+    this.modeEl.textContent = BM.settings?.aggressive
+      ? `Aggressive mode${hidden ? ` · ${hidden} section${hidden > 1 ? 's' : ''} hidden` : ''}` : '';
     if (!sections.length) { this.listEl.replaceChildren(h('p', { class: 'bm-muted' }, 'This course has no content yet.')); return; }
     const open = new Set([...this.listEl.querySelectorAll('.bm-section.is-collapsed')].map((e) => e.dataset.id));
 

@@ -96,6 +96,21 @@ BM.courseData = {
 
   items(model) { return model.sections.flatMap((s) => s.items); },
 
+  // Aggressive mode: UCL's template sections that every course has but students rarely need.
+  // Matched loosely because titles vary between modules (COMP0023 has "Module Comunication").
+  NOISE_SECTIONS: [/^general$/i, /^module\s+comm?unications?$/i, /^module\s+surveys?$/i],
+
+  isNoise(section) {
+    const t = (section.title || '').trim();
+    return section.number === 0 || this.NOISE_SECTIONS.some((re) => re.test(t));
+  },
+
+  // Sections the course view shows, honouring aggressive mode.
+  visibleSections(model) {
+    const aggressive = BM.settings?.aggressive;
+    return model.sections.filter((s) => s.items.length && !(aggressive && this.isNoise(s)));
+  },
+
   // Calls onUpdate(model) whenever there's something better to show: cache, then state, then enriched.
   async load(courseId, onUpdate) {
     const key = `course:${courseId}`;

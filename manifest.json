@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "BetterMoodle (UCL)",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A minimal reskin of UCL Moodle: deadlines first, every course file on one page, a side viewer and Ctrl+K search.",
   "icons": { "16": "icons/16.png", "48": "icons/48.png", "128": "icons/128.png" },
   "action": { "default_popup": "popup/popup.html", "default_icon": { "16": "icons/16.png", "48": "icons/48.png" } },
