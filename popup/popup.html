@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>BetterMoodle</title>
+  <style>
+    body { margin: 0; width: 260px; font: 14px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #1b1b1a; background: #fff; }
+    main { padding: 16px; }
+    h1 { font-size: 15px; font-weight: 600; margin: 0 0 4px; }
+    p { color: #6b6b68; margin: 0 0 14px; font-size: 12.5px; line-height: 1.45; }
+    label { display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 10px 0; border-top: 1px solid #e6e6e3; }
+    input { appearance: none; width: 36px; height: 20px; border-radius: 999px; background: #d6d6d2; position: relative; cursor: pointer; transition: background .15s; margin: 0; }
+    input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s; }
+    input:checked { background: #2a5bd7; }
+    input:checked::after { transform: translateX(16px); }
+    .keys { font-size: 12px; color: #6b6b68; border-top: 1px solid #e6e6e3; padding-top: 10px; line-height: 1.8; }
+    kbd { font: 500 11px system-ui, sans-serif; border: 1px solid #e6e6e3; background: #f6f6f4; border-radius: 4px; padding: 0 4px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>BetterMoodle</h1>
+    <p>A minimal UCL Moodle. Everything stays in your browser.</p>
+    <label for="enabled">Enabled <input type="checkbox" id="enabled"></label>
+    <div class="keys">
+      <kbd>Ctrl</kbd>/<kbd>⌘</kbd> <kbd>K</kbd> search everything<br>
+      <kbd>/</kbd> filter a course<br>
+      <kbd>j</kbd> <kbd>k</kbd> next / previous file · <kbd>Esc</kbd> close viewer
+    </div>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>
