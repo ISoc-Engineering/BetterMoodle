@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "tracker.css"
+        ],
+        "createdAt": "2026-11-17T14:31:17.409Z",
+        "reason": "Agent: user requested exact reproduction of agents/SCHEDULE-TRACKER-STYLE.md; section 6.10 requires a 12px coloured left border on event cards"
+      }
+    ]
+  }
+}

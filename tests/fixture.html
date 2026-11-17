@@ -1,0 +1,15 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="/host.css"></head><body style="overflow:auto">
+<header id="page-header"><h1>Test course</h1></header><main id="original"><button id="native">Moodle control</button></main>
+<script>
+const store = {layout:'list'};
+window.errors=[];addEventListener('error',e=>errors.push(e.message));addEventListener('unhandledrejection',e=>errors.push(String(e.reason)));
+window.chrome = {runtime:{getURL:path=>`${location.origin}/${path}`},storage:{local:{get:async key=>{if(location.search.includes('storage=fail'))throw Error('Storage unavailable');return {[key]:store[key]}},set:async values=>{if(location.search.includes('storage=fail'))throw Error('Storage unavailable');Object.assign(store,values)}}}};
+const main = document.querySelector('main');
+if(location.pathname.startsWith('/my/')) {
+  main.innerHTML += '<div class="dashboard-card"><a href="/course/view.php?id=101">Test course</a><div class="dashboard-card-img" style="background-image:url(/icons/book-open.svg)"></div></div>';
+} else {
+  for(let s=1;s<=5;s++){
+    main.insertAdjacentHTML('beforeend',`<div class="courseindex-section" data-for="section"><a data-for="section_title" href="/course/view.php?id=101#section-${s}">Week ${s}</a>${Array.from({length:8},(_,i)=>`<div data-for="cm"><a data-for="cm_name" href="/mod/${i===7?'quiz':'resource'}/view.php?id=${s*10+i}&amp;forceview=1">${i===7?'Quiz':'Lecture slides PDF'} ${s}.${i}</a></div>`).join('')}</div>`);
+  }
+}
+</script><script src="/model.js"></script><script src="/content.js"></script></body></html>

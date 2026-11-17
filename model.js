@@ -22,6 +22,12 @@
   function extract(doc, base) {
     const origin = new URL(base).origin;
     const courses = [], resources = [], deadlines = [], sections = [];
+    const pageURL = new URL(base);
+    const parentCourse = [...doc.querySelectorAll('.breadcrumb a[href*="/course/view.php"], #page-navbar a[href*="/course/view.php"]')].find(a => {
+      const url = safeURL(a.getAttribute('href'), base);
+      return url && new URL(url).origin === origin && new URL(url).pathname === '/course/view.php';
+    });
+    const courseId = pageURL.pathname === '/course/view.php' ? pageURL.searchParams.get('id') : doc.body?.className.match(/\bcourse-(\d+)\b/)?.[1] || (parentCourse ? new URL(parentCourse.getAttribute('href'), base).searchParams.get('id') : null);
     const logo = [...doc.querySelectorAll('img.logo-white, img.logo-yellow, img[alt*="Moodle"]')].find(img => safeURL(img.getAttribute('src'), base) && new URL(safeURL(img.getAttribute('src'), base)).origin === origin);
     function imageFromBackground(node) {
       const computed = node && (node.style?.backgroundImage || (node.ownerDocument === doc ? getComputedStyle(node).backgroundImage : ''));
@@ -51,13 +57,11 @@
     function resourceURL(a) {
       const url = urlFor(a);
       if (!url) return null;
-      const stable = new URL(url);
-      stable.searchParams.delete('forceview');
-      return stable.href;
+      return url;
     }
-    const title = label(doc.querySelector('#page-header h1, .page-header-headings h1, main h1, h1')) || 'Your Moodle';
+    const title = (pageURL.pathname === '/course/section.php' ? label(parentCourse) : '') || label(doc.querySelector('#page-header h1, .page-header-headings h1, main h1, h1')) || 'Your Moodle';
     const isCourse = /^\/course\//.test(new URL(base).pathname);
-    if (isCourse) add('courses', {title, url: `${origin}/course/view.php?id=${encodeURIComponent(new URL(base).searchParams.get('id') || '')}`, category: '', image: '', imageAlt: ''});
+    if (isCourse && courseId) add('courses', {title, url: `${origin}/course/view.php?id=${encodeURIComponent(courseId)}`, category: '', image: '', imageAlt: ''});
     doc.querySelectorAll('.pickup-card, [data-region="course-content"][data-course-id], .dashboard-card').forEach(card => {
       const a = card.querySelector('a[href*="/course/view.php"]');
       if (a) {
@@ -73,6 +77,12 @@
         add('sections', {title: label(a), url: urlFor(a), image: imageIn(imageNode) || imageIn(section), imageAlt: imageNode?.getAttribute('alt') || ''});
       }
     });
+    function resourceKey(url) {
+      if (!url) return null;
+      const key = new URL(url);
+      key.searchParams.delete('forceview');
+      return key.href;
+    }
     function resource(a, container, section) {
       const url = resourceURL(a);
       if (!url || new URL(url).origin !== origin || !/\/(?:mod\/[a-z]+\/view\.php|pluginfile\.php)/.test(new URL(url).pathname)) return;
@@ -84,7 +94,7 @@
       const sourceImage = container?.querySelector('img.activityicon, img.activityiconcontainer, .activityiconcontainer img, img');
       const iconURL = safeURL(sourceImage?.getAttribute('src'), base);
       const icon = iconURL && new URL(iconURL).origin === origin ? iconURL : '';
-      const known = resources.find(item => item.url === url);
+      const known = resources.find(item => resourceKey(item.url) === resourceKey(url));
       if (known) {
         known.iconURL ||= icon;
         known.iconAlt ||= sourceImage?.getAttribute('alt') || '';
@@ -102,14 +112,14 @@
       const a = row.matches('a') ? row : row.querySelector('a[href]');
       if (!a) return;
       resource(a, row, label(row.querySelector('small')));
-      const known = resources.find(r => r.url === resourceURL(a));
+      const known = resources.find(r => resourceKey(r.url) === resourceKey(resourceURL(a)));
       if (known && /\/f\/pdf\b/.test(row.querySelector('img')?.getAttribute('src') || '')) { known.kind = 'PDF'; known.preview = known.module === 'resource'; }
     });
     doc.querySelectorAll('.activity a.aalink, .activityinstance a[href], [data-for="cmitem"] a[href*="/mod/"]').forEach(a => {
       const section = a.closest('[data-for="section"], .section');
       const container = a.closest('.activity, [data-for="cmitem"]');
       resource(a, container, section?.getAttribute('data-sectionname') || label(section?.querySelector('.sectionname, .section-title, h3')));
-      const known = resources.find(r => r.url === resourceURL(a));
+      const known = resources.find(r => resourceKey(r.url) === resourceKey(resourceURL(a)));
       if (known && /PDF/i.test(label(container?.querySelector('.activitybadge')))) { known.kind = 'PDF'; known.preview = known.module === 'resource'; }
     });
     doc.querySelectorAll('[data-block="timeline"] [data-region="event-list-item"]').forEach(event => {
@@ -119,7 +129,7 @@
       const dateText = date?.matches('[data-region="event-list-content-date"]') ? label(date) : '';
       add('deadlines', {title: label(a), url: urlFor(a), detail: label(event.querySelector('.event-name-container > small')), date: dateText, time: label(event.querySelector('.timeline-name > small'))});
     });
-    return {title, isCourse, courses, resources, sections, deadlines, logo: logo ? safeURL(logo.getAttribute('src'), base) : ''};
+    return {title, isCourse, courseId, courses, resources, sections, deadlines, logo: logo ? safeURL(logo.getAttribute('src'), base) : ''};
   }
   globalThis.BetterMoodleModel = {clean, safeURL, supported, extract};
 })();

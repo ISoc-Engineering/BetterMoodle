@@ -1,0 +1,115 @@
+<!doctype html><meta charset="utf-8"><title>BetterMoodle regression checks</title>
+<body><script>
+(async()=>{
+ const results=[];let failures=0;
+ const assert=(ok,message)=>{if(!ok)throw Error(message)};
+ const tick=()=>new Promise(r=>setTimeout(r,60));
+ async function test(name,fn){try{await fn();results.push('PASS '+name)}catch(e){failures++;results.push('FAIL '+name+': '+e.message)}finally{document.querySelectorAll('body > iframe').forEach(frame=>frame.remove())}}
+ async function page(path='/course/view.php?id=101'){
+  const frame=document.createElement('iframe');frame.style='width:1200px;height:800px';frame.src=path;document.body.append(frame);
+  await new Promise(r=>frame.onload=r);await tick();
+  const doc=frame.contentDocument,w=frame.contentWindow,root=doc.querySelector('#bettermoodle-root')?.shadowRoot;
+  assert(root,'hub mounted');return {frame,doc,w,root,click:selector=>{const el=root.querySelector(selector);assert(el,'missing '+selector);el.click()}};
+ }
+ await test('theme switch persists, preserves PDF and sections, and restores classic',async()=>{
+  const p=await page();
+  assert(p.root.querySelector('[data-theme="classic"]'),'classic is not the default');
+  p.root.querySelectorAll('details')[2].open=true;p.click('.resource');p.click('[data-action="preview"]');
+  const pdf=p.root.querySelector('.reader iframe');
+  p.click('[data-action="popup"]');p.click('[data-action="theme"]');await new Promise(r=>setTimeout(r,300));
+  assert(p.root.querySelector('[data-theme="tracker"]'),'tracker theme missing');
+  assert(p.root.querySelector('.reader iframe')===pdf,'theme reloaded PDF');
+  assert(p.root.querySelectorAll('details')[2].open,'theme collapsed section');
+  assert(p.w.getComputedStyle(p.root.querySelector('.reader')).borderTopWidth==='4px','tracker CSS not loaded');
+  assert(p.w.getComputedStyle(p.root.querySelector('.start')).backgroundColor==='rgb(255, 92, 138)','primary button colour wrong: '+p.w.getComputedStyle(p.root.querySelector('.start')).backgroundColor);
+  assert((await p.w.chrome.storage.local.get('theme')).theme==='tracker','theme not saved');
+  p.click('[data-action="theme"]');await tick();
+  assert(p.root.querySelector('[data-theme="classic"]'),'classic not restored');p.frame.remove();
+ });
+ await test('select a resource preserves scroll and expanded sections',async()=>{
+  const p=await page();p.root.querySelectorAll('details')[3].open=true;
+  p.root.querySelector('.shell').scrollTop=600;const top=p.root.querySelector('.shell').scrollTop;
+  p.click('details:nth-child(4) .resource');await tick();
+  assert(p.root.querySelector('.reader h2').textContent.includes('4.0'),'details show selected file');
+  assert(p.root.querySelector('.shell').scrollTop===top,'scroll jumped to top');
+  assert(p.root.querySelectorAll('details')[3].open,'Week 4 collapsed');p.frame.remove();
+ });
+ await test('search keeps focus while typing and opens matching sections',async()=>{
+  const p=await page();const input=p.root.querySelector('#search');input.focus();input.value='4.0';input.dispatchEvent(new p.w.Event('input',{bubbles:true}));await tick();
+  assert(p.root.activeElement?.id==='search','search lost keyboard focus');
+  assert(p.root.querySelectorAll('.resource').length===1,'search results incorrect');assert(p.root.querySelector('details').open,'matching section is collapsed');p.frame.remove();
+ });
+ await test('layout toggles retain sections, selection and focus',async()=>{
+  const p=await page();p.root.querySelectorAll('details')[2].open=true;p.click('details:nth-child(3) .resource');
+  const b=p.root.querySelector('.layout-toggle');b.focus();b.click();await tick();
+  assert(p.root.querySelectorAll('.resource').length===40,'grid lost materials');assert(p.root.querySelectorAll('details')[2].open,'grid collapsed section');
+  assert(p.root.activeElement?.classList.contains('layout-toggle'),'layout focus lost');p.click('.layout-toggle');await tick();assert(p.root.querySelector('.section-items.list'),'list not restored');p.frame.remove();
+ });
+ await test('original Moodle restores native controls and overflow; return refreshes content',async()=>{
+  const p=await page();assert(p.doc.querySelector('main').inert,'native content not inert');p.click('[data-action="original"]');await tick();
+  assert(!p.doc.querySelector('main').inert,'native content stayed inert');assert(p.doc.body.style.overflow==='auto','overflow not restored');
+  p.doc.querySelector('h1').textContent='Changed in Moodle';p.click('[data-action="popup"]');p.click('[data-action="original"]');await tick();assert(p.root.querySelector('h1').textContent==='Changed in Moodle','return shows stale data');p.frame.remove();
+ });
+ await test('filters, PDF preview, close, popup and refresh',async()=>{
+  const p=await page();let select=p.root.querySelector('#kind');select.value='Activity';select.dispatchEvent(new p.w.Event('change',{bubbles:true}));await tick();assert(p.root.querySelectorAll('.resource').length===5,'activity filter incorrect');
+  select=p.root.querySelector('#kind');select.value='PDF';select.dispatchEvent(new p.w.Event('change',{bubbles:true}));p.click('.resource');p.click('[data-action="preview"]');await tick();assert(p.root.querySelector('.reader iframe'),'PDF preview missing');
+  p.click('[data-action="popup"]');await tick();assert(p.root.querySelector('.reader iframe'),'popup lost preview');p.root.dispatchEvent(new p.w.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));assert(!p.root.querySelector('.popup'),'escape did not dismiss popup');
+  p.click('[data-action="close"]');assert(p.root.querySelector('.empty-reader'),'close failed');p.click('[data-action="refresh"]');await tick();assert(p.root.querySelectorAll('.resource').length===35,'refresh lost filter');p.frame.remove();
+ });
+ await test('dashboard course cards retain real imagery',async()=>{
+  const p=await page('/my/');assert(p.root.querySelector('.course-link').getAttribute('href')===location.origin+'/course/view.php?id=101','course destination wrong');assert(p.root.querySelector('.course-link img'),'cover missing');p.frame.remove();
+ });
+ await test('model preserves Moodle resource navigation parameters',async()=>{
+  const p=await page();const data=p.w.BetterMoodleModel.extract(p.doc,p.w.location.href);assert(new URL(data.resources[0].url).searchParams.get('forceview')==='1','forceview was stripped from Moodle URL');p.frame.remove();
+ });
+ await test('section page resolves parent course ID',async()=>{
+  const p=await page('/course/section.php?id=999');p.doc.body.insertAdjacentHTML('beforeend','<nav class="breadcrumb"><a href="/course/view.php?id=101">Test course</a></nav>');
+  const data=p.w.BetterMoodleModel.extract(p.doc,p.w.location.href);assert(data.courses[0].url===location.origin+'/course/view.php?id=101','section ID mistaken for course ID');p.frame.remove();
+ });
+ await test('PDF frame survives layout, refresh and popup; Reload replaces it',async()=>{
+  const p=await page();p.click('.resource');p.click('[data-action="preview"]');const frame=p.root.querySelector('.reader iframe');p.click('[data-action="popup"]');p.click('.layout-toggle');await tick();assert(p.root.querySelector('.reader iframe')===frame,'layout reloaded PDF');p.click('[data-action="refresh"]');await tick();assert(p.root.querySelector('.reader iframe')===frame,'refresh reloaded PDF');p.click('[data-action="preview"]');assert(p.root.querySelector('.reader iframe')!==frame,'Reload PDF did nothing');p.frame.remove();
+ });
+ await test('filter retains keyboard focus',async()=>{
+  const p=await page();const select=p.root.querySelector('#kind');select.focus();select.value='Activity';select.dispatchEvent(new p.w.Event('change',{bubbles:true}));assert(p.root.activeElement?.id==='kind','filter lost focus');p.frame.remove();
+ });
+ await test('close details returns keyboard focus to the selected resource',async()=>{
+  const p=await page();p.click('.resource');const close=p.root.querySelector('[data-action="close"]');close.focus();close.click();assert(p.root.activeElement?.classList.contains('resource'),'close lost keyboard focus');p.frame.remove();
+ });
+ await test('async Moodle text updates refresh the hub',async()=>{
+  const p=await page();await new Promise(r=>setTimeout(r,700));p.doc.querySelector('h1').firstChild.textContent='Updated course';await new Promise(r=>setTimeout(r,650));assert(p.root.querySelector('h1').textContent==='Updated course','text mutation ignored');p.frame.remove();
+ });
+ await test('hydrated course cover survives refreshing original data',async()=>{
+  const p=await page();await p.w.chrome.storage.local.set({courseCovers:{101:location.origin+'/pluginfile.php/cover.svg'}});p.click('[data-action="refresh"]');await tick();assert(p.root.querySelector('.course-image'),'cache cover not loaded');
+  p.doc.querySelector('main').append(p.doc.createElement('div'));await new Promise(r=>setTimeout(r,650));assert(p.root.querySelector('.course-image'),'DOM update discarded cover');p.frame.remove();
+ });
+ await test('native activity and index variants do not duplicate a resource',async()=>{
+  const p=await page();p.doc.querySelector('main').insertAdjacentHTML('beforeend','<div class="section" data-sectionname="Week 1"><div class="activity"><a class="aalink" href="/mod/resource/view.php?id=10">Lecture slides PDF 1.0</a></div></div>');const data=p.w.BetterMoodleModel.extract(p.doc,p.w.location.href);assert(data.resources.length===40,'forceview variant duplicated a resource');p.frame.remove();
+ });
+ await test('section identity uses the current breadcrumb rather than another course link',async()=>{
+  const p=await page('/course/section.php?id=999');p.doc.querySelector('h1').textContent='Week 4';p.doc.body.insertAdjacentHTML('afterbegin','<a href="/course/view.php?id=202">Another course</a><nav class="breadcrumb"><a href="/course/view.php?id=101">Real course title</a></nav>');const data=p.w.BetterMoodleModel.extract(p.doc,p.w.location.href);assert(data.courseId==='101','wrong parent course');assert(data.title==='Real course title','section heading used as course title');p.frame.remove();
+ });
+ await test('mobile resource selection brings the reader into view',async()=>{
+  const p=await page();p.frame.style.width='390px';await tick();p.click('.resource');await tick();const box=p.root.querySelector('.reader').getBoundingClientRect();assert(box.top>=0&&box.top<700,'selected resource details off screen');p.frame.remove();
+ });
+ await test('Open in Moodle actually navigates to the original activity URL',async()=>{
+  const p=await page();p.click('.resource');const loaded=new Promise(r=>p.frame.onload=r);p.click('.reader-actions a');await loaded;assert(p.frame.contentWindow.location.pathname==='/mod/resource/view.php','link did not navigate');assert(new URL(p.frame.contentWindow.location.href).searchParams.get('forceview')==='1','navigation changed original URL');assert(p.frame.contentDocument.querySelector('#destination'),'destination not loaded');p.frame.remove();
+ });
+ await test('unavailable storage still allows resource selection and layout changes',async()=>{
+  const p=await page('/course/view.php?id=101&storage=fail');p.click('.resource');p.click('.layout-toggle');await tick();assert(p.root.querySelector('.reader h2'),'reader missing');assert(p.root.querySelector('.section-items.grid'),'layout failed without storage');assert(!p.w.errors.length,p.w.errors.join(';'));p.frame.remove();
+ });
+ await test('empty courses show an empty state and remain operable',async()=>{
+  const p=await page();p.doc.querySelectorAll('.courseindex-section').forEach(el=>el.remove());p.click('[data-action="refresh"]');assert(!p.root.querySelector('.resource'),'stale resources remain');assert(p.root.querySelector('.empty'),'no empty state');p.click('.layout-toggle');await tick();assert(p.root.querySelector('[data-action="original"]'),'original Moodle unavailable');assert(!p.w.errors.length,p.w.errors.join(';'));p.frame.remove();
+ });
+ await test('returning from original Moodle preserves hub position and sections',async()=>{
+  const p=await page();p.root.querySelectorAll('details')[3].open=true;p.root.querySelector('.shell').scrollTop=600;const top=p.root.querySelector('.shell').scrollTop;p.click('[data-action="original"]');assert(p.root.activeElement?.classList.contains('corner-button'),'original mode lost focus');p.click('[data-action="popup"]');p.click('[data-action="original"]');assert(p.root.activeElement?.classList.contains('original'),'hub return lost focus');assert(p.root.querySelector('.shell').scrollTop===top,'hub position lost');assert(p.root.querySelectorAll('details')[3].open,'section expansion lost');p.frame.remove();
+ });
+ await test('all resource types and timeline details survive extraction and rendering',async()=>{
+  const p=await page();p.doc.querySelector('main').insertAdjacentHTML('beforeend',`<div class="section" data-sectionname="Extras">${['folder','page','book','url','resource'].map((mod,i)=>`<div class="activity"><a class="aalink" href="/mod/${mod}/view.php?id=${900+i}">Extra ${mod}</a></div>`).join('')}</div><div data-block="timeline"><h3 data-region="event-list-content-date">Tomorrow</h3><div class="list-group"><div data-region="event-list-item"><div class="event-name"><a href="/mod/assign/view.php?id=777">Assignment due</a></div><div class="event-name-container"><small>Test course</small></div><div class="timeline-name"><small>12:00</small></div></div></div></div>`);p.click('[data-action="refresh"]');const timeline=p.root.querySelector('.timeline');assert(timeline.textContent.includes('Tomorrow')&&timeline.textContent.includes('12:00')&&timeline.textContent.includes('Assignment due'),'timeline lost date, time or event');
+  for(const [kind,count] of [['Folder',1],['Reading',2],['Link',1],['slides',35],['all',45]]){const select=p.root.querySelector('#kind');select.value=kind;select.dispatchEvent(new p.w.Event('change',{bubbles:true}));assert(p.root.querySelectorAll('.resource').length===count,'wrong count for '+kind)}p.frame.remove();
+ });
+ await test('model URL validation and unsupported pages',async()=>{
+  const p=await page();const m=p.w.BetterMoodleModel;for(const url of ['javascript:alert(1)','data:text/html,x','https://user:pass@example.org/'])assert(m.safeURL(url,location.origin)===null,'unsafe URL accepted');for(const path of ['/mod/quiz/view.php?id=1','/course/view.php?id=1&edit=on','/course/view.php?id=1&sesskey=x'])assert(!m.supported(location.origin+path,p.doc.body),'unsafe page overlaid');p.frame.remove();
+ });
+ document.body.textContent=results.join('\n');await fetch('/results',{method:'POST',body:JSON.stringify({results,failures})});
+})().catch(async e=>{await fetch('/results',{method:'POST',body:JSON.stringify({results:['HARNESS ERROR '+e.stack],failures:1})})});
+</script>
