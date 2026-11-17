@@ -7,6 +7,7 @@ window.chrome = {runtime:{getURL:path=>`${location.origin}/${path}`},storage:{lo
 const main = document.querySelector('main');
 if(location.pathname.startsWith('/my/')) {
   main.innerHTML += '<div class="dashboard-card"><a href="/course/view.php?id=101">Test course</a><div class="dashboard-card-img" style="background-image:url(/icons/book-open.svg)"></div></div>';
+  main.insertAdjacentHTML('beforeend', `<section data-block="news_items"><ul><li class="post"><div class="head">Course team</div><a href="/mod/forum/discuss.php?d=55">Week one announcement</a><time>Today</time></li><li><a href="https://external.example/mod/forum/discuss.php?d=66">External post</a></li><li><a href="javascript:alert(1)">Unsafe post</a></li></ul></section><section data-block="recent_activity"><a href="/mod/forum/discuss.php?d=55">Week one announcement</a></section><section data-block="timeline"><div data-region="event-list-content-date">Tomorrow</div><div class="list-group"><div data-region="event-list-item"><div class="event-name"><a href="/mod/assign/view.php?id=77">Assignment due</a></div></div></div></section>`);
 } else {
   for(let s=1;s<=5;s++){
     main.insertAdjacentHTML('beforeend',`<div class="courseindex-section" data-for="section"><a data-for="section_title" href="/course/view.php?id=101#section-${s}">Week ${s}</a>${Array.from({length:8},(_,i)=>`<div data-for="cm"><a data-for="cm_name" href="/mod/${i===7?'quiz':'resource'}/view.php?id=${s*10+i}&amp;forceview=1">${i===7?'Quiz':'Lecture slides PDF'} ${s}.${i}</a></div>`).join('')}</div>`);

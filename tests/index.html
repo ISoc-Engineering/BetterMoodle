@@ -26,6 +26,41 @@
   p.click('[data-action="theme"]');await tick();
   assert(p.root.querySelector('[data-theme="classic"]'),'classic not restored');p.frame.remove();
  });
+ await test('UCL logo uses the host asset and classic uses the supplied blue palette',async()=>{
+  const p=await page();
+  assert(p.root.querySelector('.moodle-logo').getAttribute('src')==='/theme/ucl/pix/headerlogo.svg','UCL logo fallback missing');
+  assert(p.w.getComputedStyle(p.root.querySelector('.shell')).getPropertyValue('--canvas').trim()==='#f4f7fb','blue palette missing');
+  p.frame.remove();
+ });
+ await test('unsafe cached covers are ignored',async()=>{
+  const p=await page();await p.w.chrome.storage.local.set({courseCovers:{101:'https://external.example/cover.png'}});
+  p.click('[data-action="refresh"]');await tick();assert(!p.root.querySelector('.course-image'),'external cover accepted');p.frame.remove();
+ });
+ await test('view options names themes and omits the redundant layout action',async()=>{
+  const p=await page();p.click('[data-action="popup"]');
+  assert(!p.root.querySelector('.popup [data-action="layout"]'),'popup still has layout action');
+  assert(p.root.querySelector('[data-action="theme"]').textContent.includes('Pop!'),'Pop! label missing');
+  p.click('[data-action="theme"]');await tick();
+  assert(p.root.querySelector('[data-action="theme"]').textContent.includes('Minimal'),'Minimal label missing');
+  assert(p.root.querySelector('.layout-toggle'),'course layout control removed');p.frame.remove();
+ });
+ await test('home prioritises courses, timeline, then safe deduplicated forum updates',async()=>{
+  const p=await page('/my/');
+  const posts=p.root.querySelectorAll('.forum-updates li');assert(posts.length===1,'forum duplicates or unsafe links rendered');
+  assert(posts[0].textContent.includes('Week one announcement'),'forum title missing');
+  assert(posts[0].textContent.includes('Course team'),'forum context missing');
+  assert(p.root.querySelector('.home-updates').firstElementChild.classList.contains('timeline'),'timeline is not first');
+  assert(p.w.getComputedStyle(p.root.querySelector('.home-layout')).gridTemplateColumns.split(' ').length===2,'desktop home not horizontal');
+  p.frame.style.width='400px';await tick();
+  assert(p.w.getComputedStyle(p.root.querySelector('.home-layout')).gridTemplateColumns.split(' ').length===1,'mobile home not stacked');
+  assert(p.root.querySelector('.home-layout').scrollWidth<=400,'mobile home overflows');
+  p.click('[data-action="popup"]');p.click('[data-action="theme"]');await tick();
+  assert(p.root.querySelector('.forum-updates li'),'Pop! lost forum updates');p.frame.remove();
+ });
+ await test('home forum updates respond to Moodle hydration',async()=>{
+  const p=await page('/my/');p.doc.querySelectorAll('[data-block="news_items"],[data-block="recent_activity"]').forEach(n=>n.remove());
+  await new Promise(r=>setTimeout(r,650));assert(p.root.querySelector('.forum-updates .empty'),'missing honest empty state');p.frame.remove();
+ });
  await test('select a resource preserves scroll and expanded sections',async()=>{
   const p=await page();p.root.querySelectorAll('details')[3].open=true;
   p.root.querySelector('.shell').scrollTop=600;const top=p.root.querySelector('.shell').scrollTop;

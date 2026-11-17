@@ -93,3 +93,10 @@
 @keyframes tracker-pop {from {opacity:0;transform:translateY(24px) rotate(-2deg) scale(.95)} to {opacity:1;transform:none}}
 [data-theme="tracker"] .shell .tools label:focus-within {outline:4px solid var(--ink);outline-offset:3px}
 @media(prefers-reduced-motion:reduce) {[data-theme="tracker"] .shell .tracker-enter {animation:none!important}}
+[data-theme="tracker"] .shell .home-layout {grid-template-columns:minmax(0,1.65fr) minmax(300px,1fr);gap:32px}
+[data-theme="tracker"] .shell .home-updates :is(.timeline,.forum-updates) {padding:20px;background:#fff;border:4px solid var(--ink);border-radius:20px;box-shadow:10px 10px 0 var(--ink)}
+[data-theme="tracker"] .shell .home-updates .empty {padding:14px}
+[data-theme="tracker"] .shell .forum-updates li+li {border-top:3px solid var(--ink)}
+[data-theme="tracker"] .shell .forum-updates a {font-family:var(--display);font-weight:900;text-transform:uppercase}
+@media(max-width:960px){[data-theme="tracker"] .shell .home-layout{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:560px){[data-theme="tracker"] .shell .home-updates :is(.timeline,.forum-updates){padding:12px;border-width:3px;box-shadow:6px 6px 0 var(--ink)}}

@@ -12,7 +12,7 @@
     "all_frames": false
   }],
   "web_accessible_resources": [{
-    "resources": ["ui.css", "tracker.css", "fonts/inter-latin.woff2", "icons/book-open.svg", "icons/arrow-right.svg", "icons/x.svg", "icons/search.svg", "icons/layout-grid.svg", "icons/list.svg", "icons/file-text.svg", "icons/list-tree.svg", "icons/moodle.svg"],
+    "resources": ["ui.css", "tracker.css", "fonts/inter-latin.woff2", "icons/book-open.svg", "icons/arrow-right.svg", "icons/x.svg", "icons/search.svg", "icons/layout-grid.svg", "icons/list.svg", "icons/file-text.svg", "icons/list-tree.svg"],
     "matches": ["https://moodle.ucl.ac.uk/*"]
   }]
 }

@@ -21,7 +21,7 @@
   }
   function extract(doc, base) {
     const origin = new URL(base).origin;
-    const courses = [], resources = [], deadlines = [], sections = [];
+    const courses = [], resources = [], deadlines = [], sections = [], forumUpdates = [];
     const pageURL = new URL(base);
     const parentCourse = [...doc.querySelectorAll('.breadcrumb a[href*="/course/view.php"], #page-navbar a[href*="/course/view.php"]')].find(a => {
       const url = safeURL(a.getAttribute('href'), base);
@@ -129,7 +129,17 @@
       const dateText = date?.matches('[data-region="event-list-content-date"]') ? label(date) : '';
       add('deadlines', {title: label(a), url: urlFor(a), detail: label(event.querySelector('.event-name-container > small')), date: dateText, time: label(event.querySelector('.timeline-name > small'))});
     });
-    return {title, isCourse, courseId, courses, resources, sections, deadlines, logo: logo ? safeURL(logo.getAttribute('src'), base) : ''};
+    const forumURLs = new Set();
+    doc.querySelectorAll('[data-block="news_items"] a[href], [data-block="recent_activity"] a[href], .block_news_items a[href], .block_recent_activity a[href]').forEach(a => {
+      const url = urlFor(a);
+      if (!url) return;
+      const parsed = new URL(url);
+      if (parsed.origin !== origin || parsed.pathname !== '/mod/forum/discuss.php' || !parsed.searchParams.get('d') || !label(a) || forumURLs.has(url)) return;
+      forumURLs.add(url);
+      const post = a.closest('.post, .forum-recent, li, .activity');
+      forumUpdates.push({title:label(a), url, detail:label(post?.querySelector('.head, .author')), date:label(post?.querySelector('time, .date'))});
+    });
+    return {title, isCourse, courseId, courses, resources, sections, deadlines, forumUpdates, logo: logo ? safeURL(logo.getAttribute('src'), base) : ''};
   }
   globalThis.BetterMoodleModel = {clean, safeURL, supported, extract};
 })();
