@@ -23,7 +23,7 @@
   background:var(--sky) repeating-linear-gradient(-45deg,transparent 0 14px,rgba(255,255,255,.22) 14px 28px);
   border:4px solid var(--ink);border-radius:14px;box-shadow:6px 6px 0 var(--ink);
 }
-[data-theme="tracker"] .shell main {max-width:1280px;padding:16px 24px 96px}
+[data-theme="tracker"] .shell main {max-width:none;padding:16px 24px 96px}
 [data-theme="tracker"] .shell :is(.course-head,.course-content,.course-picker) {
   min-width:0;padding:20px;border:4px solid var(--ink);border-radius:20px;box-shadow:10px 10px 0 var(--ink);
   background:radial-gradient(circle at 1px 1px,rgba(0,0,0,.18) 1.2px,transparent 1.6px) 0 0 / 18px 18px,var(--paper);
