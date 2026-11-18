@@ -2,20 +2,41 @@
   "manifest_version": 3,
   "name": "BetterMoodle (UCL)",
   "version": "0.1.1",
-  "description": "A minimal reskin of UCL Moodle: deadlines first, every course file on one page, a side viewer and Ctrl+K search.",
-  "icons": { "16": "icons/16.png", "48": "icons/48.png", "128": "icons/128.png" },
-  "action": { "default_popup": "popup/popup.html", "default_icon": { "16": "icons/16.png", "48": "icons/48.png" } },
-  "permissions": ["storage"],
+  "description": "Unofficial. A minimal reskin of UCL Moodle: deadlines first, every course file on one page, a side viewer and Ctrl+K search.",
+  "icons": {
+    "16": "icons/16.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/16.png",
+      "48": "icons/48.png"
+    }
+  },
+  "permissions": [
+    "storage"
+  ],
   "content_scripts": [
     {
-      "matches": ["https://moodle.ucl.ac.uk/*"],
-      "js": ["src/early.js"],
-      "css": ["src/styles/theme.css", "src/styles/ui.css"],
+      "matches": [
+        "https://moodle.ucl.ac.uk/*"
+      ],
+      "js": [
+        "src/early.js"
+      ],
+      "css": [
+        "src/styles/theme.css",
+        "src/styles/ui.css"
+      ],
       "run_at": "document_start",
       "all_frames": true
     },
     {
-      "matches": ["https://moodle.ucl.ac.uk/*"],
+      "matches": [
+        "https://moodle.ucl.ac.uk/*"
+      ],
       "js": [
         "src/lib/util.js",
         "src/lib/store.js",
@@ -30,5 +51,16 @@
       "run_at": "document_idle"
     }
   ],
-  "browser_specific_settings": { "gecko": { "id": "bettermoodle@isoc-ucl", "strict_min_version": "121.0" } }
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "bettermoodle@isoc-ucl",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    }
+  },
+  "homepage_url": "https://github.com/ISoc-Engineering/BetterMoodle"
 }
