@@ -2,13 +2,27 @@
 
 A Chrome/Firefox extension that reskins UCL Moodle (`moodle.ucl.ac.uk`) into a minimal interface with deadlines first, every course file on one page, and no tab sprawl.
 
-## Install (unpacked)
+> Unofficial. Not affiliated with or endorsed by UCL. See [PRIVACY.md](PRIVACY.md); nothing leaves your browser.
 
-**Chrome / Edge / Brave:** go to `chrome://extensions`, turn on Developer mode, click **Load unpacked** and pick this folder. After editing files, click the reload icon on the extension card and refresh Moodle.
+## Install
 
-**Firefox:** go to `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on…** and pick `manifest.json`.
+**Store versions (recommended):** Chrome Web Store and Firefox Add-ons links coming soon.
 
-No build step. It's plain JavaScript, so you can edit the files directly.
+### Beta: install from a GitHub Release
+
+1. Download `bettermoodle-<version>.zip` from the [latest release](https://github.com/ISoc-Engineering/BetterMoodle/releases/latest) and unzip it somewhere you'll keep it. Chrome loads the extension from that folder, so don't delete it.
+2. **Chrome / Edge / Brave / Arc:** open `chrome://extensions` (`edge://extensions` in Edge), turn on **Developer mode**, click **Load unpacked** and choose the unzipped folder. Then open or refresh Moodle.
+3. **Firefox:** open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on…** and choose `manifest.json` in the unzipped folder. Firefox removes temporary add-ons when it restarts, so use the Firefox Add-ons version once it's live.
+
+Beta installs don't auto-update. To update, download the new zip, replace the folder, and click the reload icon on the extension card.
+
+### Development
+
+Load this repo folder unpacked as described above. There's no build step; it's plain JavaScript. After editing, click reload on the extension card and refresh Moodle.
+
+### Releasing
+
+Bump `version` in `manifest.json`, then run `scripts/package.sh` to create `dist/bettermoodle-<version>.zip`. Tag the commit `v<version>`, and upload that same zip to the Chrome Web Store, Firefox Add-ons and a GitHub Release. Store copy, permission justifications and the screenshot checklist are in [store/LISTING.md](store/LISTING.md).
 
 ## What it does (v0.1)
 
