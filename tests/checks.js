@@ -39,12 +39,13 @@
         expect($('.bm-due-group').classList.contains('is-overdue'), 'first group should be Overdue');
         expect($('.bm-due-name').textContent.includes('Robot maze'), 'Robot maze should come first');
       });
-      await check('courses: most recently used first, external image dropped, images shown in Pop!', async () => {
+      await check('courses: top left, all six visible at once, most recently used first', async () => {
         await until(() => $$('.bm-course').length === 6, '6 courses');
         expect($('.bm-course').textContent.includes('Object-Oriented'), `Moodle's most recently accessed course should be first, got ${$('.bm-course').textContent}`);
-        const imgs = $$('.bm-course-img');
-        expect(imgs.length === 1, `only the safe data: image should be kept, got ${imgs.length}`);
-        expect(css(imgs[0], 'display') === 'block', 'Pop! should show course images');
+        expect($('.bm-home-layout').firstElementChild.contains($('.bm-course-grid')), 'courses are the main (left) column');
+        const grid = $('.bm-course-grid').getBoundingClientRect();
+        expect($$('.bm-course').every((c) => { const r = c.getBoundingClientRect(); return r.right <= grid.right + 1 && r.width > 150; }), 'no slider: every card is fully in view');
+        expect(!$('.bm-course img'), 'no cover images: compact cards');
       });
       await check('a course you just opened jumps to the front', async () => {
         await BM.recent.visit(103);
@@ -53,22 +54,51 @@
         expect($('.bm-course').textContent.includes('Theory of Computation'), 'visited course should be first');
         expect($$('.bm-course')[1].textContent.includes('Object-Oriented'), 'then Moodle order');
       });
-      await check('no headline at the top: the page starts with Due soon and Forums', async () => {
+      await check('right column: To do, Forums, Pinned, Feedback tracker; small labels, no headline', async () => {
         expect(!$('.bm-hero') && !$('.bm-home-top kbd'), 'no headline, no "Press Ctrl K" line');
-        expect($('.bm-home-body').firstElementChild.classList.contains('bm-home-grid'), 'Due soon + Forums come first');
+        const side = $('.bm-home-side');
+        expect(side.contains($('.bm-due-list')) && side.contains($('.bm-news-panel')) && side.contains($('.bm-feedback-link')), 'all in the right column');
+        expect(texts('.bm-sec-label').slice(0, 3).join('|') === 'Courses|To do|Forums', `labels, got ${texts('.bm-sec-label').join('|')}`);
       });
-      await check('course tiles: this week, Slides straight to it, Forum, colour', async () => {
-        await until(() => $$('.bm-course-meta').some((m) => m.textContent.includes('Week 2')), 'this week on the tiles');
+      await check('each card: this week, and Slides / Forum / Due / Grades with counts', async () => {
+        await until(() => $$('.bm-course-week').some((m) => m.textContent.includes('Week 2')), 'this week on the cards');
         const t = $('.bm-course[data-id="101"]');
-        expect(t.querySelector('.bm-course-btn[href="/course/view.php?id=101#bm-slides"]'), 'Slides opens the course at this week');
-        expect(t.querySelector('.bm-course-btn[href="/mod/forum/index.php?id=101"]'), 'Forum opens its forum feed');
+        const b = (k) => t.querySelector(`.bm-cbtn[data-kind="${k}"]`);
+        expect(b('slides').getAttribute('href') === '/course/view.php?id=101#bm-slides', 'Slides opens the course at this week');
+        expect(b('forum').getAttribute('href') === '/mod/forum/index.php?id=101', 'Forum opens its forum feed');
+        expect(b('due').getAttribute('href') === '/course/view.php?id=101#bm-assess', "Due opens the course's assessments");
+        expect(b('grades').getAttribute('href') === '/grade/report/user/index.php?id=101', 'Grades opens its grade report');
+        await until(() => !b('due').querySelector('.bm-count').hidden, 'Due count');
+        expect(b('due').textContent === 'Due2', `COMP0002 has 2 due this week (overdue + tomorrow), got ${b('due').textContent}`);
+        await until(() => !b('forum').querySelector('.bm-count').hidden, 'Forum count');
+        expect(Number(b('forum').querySelector('.bm-count').textContent) >= 1 && b('forum').classList.contains('has-count'), 'new forum posts counted');
         expect(t.querySelector('.bm-course-name').style.viewTransitionName === 'bm-course-101', 'name grows into the course page title');
+      });
+      await check('pick a course colour: used on its card and its deadlines', async () => {
+        const t = $('.bm-course[data-id="101"]');
         t.querySelector('.bm-swatch-btn').click();
         await until(() => $('.bm-swatches'), 'colour choices');
         $$('.bm-swatches .bm-swatch')[3].click();
-        await until(() => $('.bm-course[data-id="101"]').style.getPropertyValue('--c') === BM.PALETTE[3], 'tile takes the colour');
+        await until(() => $('.bm-course[data-id="101"]').style.getPropertyValue('--c') === BM.PALETTE[3], 'card takes the colour');
         expect((await BM.colors.all())[101] === BM.PALETTE[3], 'colour remembered');
         expect($$('.bm-due-item').filter((a) => a.textContent.includes('COMP0002')).every((a) => a.style.getPropertyValue('--c') === BM.PALETTE[3]), "and used on that course's deadlines");
+      });
+      await check('drag a card to reorder; the order is remembered', async () => {
+        const cards = () => $$('.bm-course').map((c) => c.dataset.id);
+        const before = cards();
+        const [a, b] = [$$('.bm-course')[0], $$('.bm-course')[2]];
+        const dt = new DataTransfer();
+        a.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }));
+        const r = b.getBoundingClientRect();
+        b.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt, clientX: r.right - 5, clientY: r.top + 5 }));
+        a.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: dt }));
+        const after = cards();
+        expect(after[2] === before[0] && after[0] === before[1], `moved first card after the third, got ${after.join(',')}`);
+        await until(async () => true, 'save');
+        expect(JSON.stringify((await BM.store.get('course-order')).v) === JSON.stringify(after.map(Number)), 'order saved');
+        BM.home.order = [];
+        await BM.store.set('course-order', []);
+        BM.home.renderCourses(BM.home.lastCourses);
       });
       await check('pinned files and posts show on the dashboard, with Unpin', async () => {
         expect($('.bm-pins-panel').hidden, 'no Pinned panel until something is pinned');
@@ -95,29 +125,15 @@
         await until(() => $('.bm-toast')?.textContent.includes('New in COMP0147: Problem class moved'), 'toast');
         $('.bm-toast').remove();
       });
-      await check('courses sit in one sideways-scrolling row below the deadlines', async () => {
-        await until(() => !$('.bm-course.bm-enter'), 'Pop! entrance animation to finish');
-        const strip = $('.bm-course-strip');
-        expect($('#bm-h-due').compareDocumentPosition(strip) & Node.DOCUMENT_POSITION_FOLLOWING, 'courses come after Due soon');
-        const tops = new Set($$('.bm-course').map((c) => Math.round(c.getBoundingClientRect().top)));
-        expect(tops.size === 1, `all course tiles should be on one row, got ${tops.size} rows`);
-        expect(strip.scrollWidth > strip.clientWidth, '6 courses should overflow and scroll');
-        const [prev, next] = $$('.bm-strip-btn');
-        expect(!prev.hidden && prev.disabled && !next.disabled, 'at the start: left arrow off, right arrow on');
-        next.click();
-        await until(() => strip.scrollLeft > 0, 'strip to scroll right');
-        await until(() => !prev.disabled, 'left arrow to turn on');
-        strip.scrollLeft = strip.scrollWidth;
-        await until(() => next.disabled, 'right arrow off at the end');
-      });
       await check('Forums panel: newest posts from every forum in every course, new ones tagged', async () => {
-        await until(() => $$('.bm-news-item').length === 6, '6 forum posts');
+        await until(() => $$('.bm-news-item').length === 5, '5 newest forum posts');
         const t = texts('.bm-news-title');
         expect(t[0] === 'Problem class moved' && t[1] === 'Segfault in the maze solver', `newest first, got ${t.slice(0, 2).join(' | ')}`);
         expect($$('.bm-news-item')[1].textContent.includes('Q&A forum'), 'not just announcements: Q&A posts too, with the forum named');
-        const isNew = (title) => $$('.bm-news-item').find((a) => a.textContent.includes(title)).classList.contains('is-new');
+        const isNew = (title) => { const a = $$('.bm-news-item').find((x) => x.textContent.includes(title)); if (!a) throw new Error(`no "${title}" in ${texts('.bm-news-title').join(' | ')}`); return a.classList.contains('is-new'); };
         expect(isNew('Problem class moved') && isNew('Lab room change'), 'recent or unread posts are tagged New');
-        expect(!isNew('Coursework FAQ'), 'an old, read post is not');
+        const faq = BM.home.news.find((n) => n.title.startsWith('Coursework FAQ'));
+        expect(BM.home.news.length === 6 && faq && !(faq.unread > 0 || faq.ts > BM.home.newSince), 'an old, read post is not new (and only the newest 5 are listed)');
       });
       await check('tick off a deadline, then undo it', async () => {
         const row = $$('.bm-due-row').find((r) => r.textContent.includes('Proofs problem set'));
@@ -141,13 +157,14 @@
         expect(localStorage.getItem('bm:fold:news') === '1', 'the choice is remembered');
         head.click();
         await until(() => !$('#bm-news-body').hidden, 'to open again');
-        const fb = $('.bm-shortcut.is-feedback');
+        const fb = $('.bm-feedback-link');
         expect(fb && fb.getAttribute('href') === '/local/ucl_tracker/index.php', `Feedback tracker = the top bar's link, got ${fb && fb.getAttribute('href')}`);
-        expect(fb.textContent.trim().startsWith('Feedback tracker') && !$('.bm-shortcuts p'), 'just the name, no explaining sentence');
+        expect(fb.textContent.trim().startsWith('Feedback tracker'), 'just the name, no explaining sentence');
         await until(() => !$('.bm-open-forums').hidden, 'Open forums button');
         const firstCourse = $('.bm-course').dataset.id;
         expect($('.bm-open-forums').getAttribute('href') === `/mod/forum/index.php?id=${firstCourse}`, 'Open forums opens your most recently used course');
-        expect($('.bm-news-panel').compareDocumentPosition($('.bm-shortcuts')) & Node.DOCUMENT_POSITION_FOLLOWING, 'Feedback tracker sits below Forums');
+        expect($('.bm-news-panel').compareDocumentPosition($('.bm-feedback-link')) & Node.DOCUMENT_POSITION_FOLLOWING, 'Feedback tracker sits below Forums');
+        expect($$('.bm-news-item').length <= 5, 'at most 5 posts in the column');
       });
       await check('classic dashboard toggle swaps views', async () => {
         const btn = $('.bm-home-top .bm-link-btn');
@@ -168,7 +185,6 @@
         await chrome.storage.local.set({ theme: 'minimal' });
         expect(html.dataset.bmTheme === 'minimal', 'theme should be minimal');
         expect(!css(document.body, 'background-image').includes('radial-gradient'), 'Minimal should have a plain background');
-        expect(css($('.bm-course-img'), 'display') === 'none', 'Minimal should not show course images');
         expect(!$('.bm-cursor'), 'no cursor ring outside Pop!');
         await chrome.storage.local.set({ theme: 'pop' });
         expect(html.dataset.bmTheme === 'pop', 'theme should be pop');
@@ -201,11 +217,10 @@
     },
 
     async homeSoft(check) {
-      await check('Soft theme: tokens applied and course images shown', async () => {
+      await check('Soft theme: tokens applied', async () => {
         await until(() => $$('.bm-course').length === 6, '6 courses');
         expect(html.dataset.bmTheme === 'soft', 'theme should be soft');
         expect(css(html, '--bm-accent') === '#315f85', `accent should be #315f85, got ${css(html, '--bm-accent')}`);
-        expect(css($('.bm-course-img'), 'display') === 'block', 'Soft should show course images');
       });
     },
 

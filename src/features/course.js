@@ -118,12 +118,13 @@ BM.course = {
     // From the dashboard: #bm-slides opens Slides & files at this week; #bm-week=<id> opens that week.
     const week = location.hash.match(/bm-week=(\d+)/)?.[1] || (location.hash.includes('bm-slides') ? this.currentWeekId() : '');
     if (location.hash.includes('bm-slides')) { this.filter.chip = 'materials'; this.applyFilter(); }
+    if (location.hash.includes('bm-assess')) { this.filter.chip = 'assess'; this.applyFilter(); }
     if (week) {
       const sec = this.root.querySelector(`.bm-section[data-id="${week}"]`);
       if (sec?.classList.contains('is-collapsed') && !this.root.classList.contains('is-filtering')) sec.querySelector('.bm-section-head').click();
       sec?.scrollIntoView({ block: 'start' });
     }
-    if (week || location.hash.includes('bm-slides')) history.replaceState(null, '', location.pathname + location.search);
+    if (week || /bm-(slides|assess)/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search);
     // Deep link from Ctrl+K on another page: #bm-open=<cmid>
     const m = location.hash.match(/bm-open=(\d+)/);
     if (m) {

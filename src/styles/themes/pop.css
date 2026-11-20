@@ -93,20 +93,15 @@ html.bm[data-bm-theme="pop"] .bm-input { font-weight: 700; padding: 10px 12px; b
 html.bm[data-bm-theme="pop"] .bm-input::placeholder { color: rgba(0,0,0,.5); }
 html.bm[data-bm-theme="pop"] .bm-input:focus { outline: 4px solid var(--ink); outline-offset: 3px; border-color: var(--ink); }
 
-/* Panels sit on dot paper (the dashboard's left panel) or plain white (the right). */
-html.bm[data-bm-theme="pop"] .bm-home-grid > .bm-panel:first-child { background: var(--bm-page); }
-
-/* Rows: each section and course is a coloured block (--c from BM.colorFor). */
-html.bm[data-bm-theme="pop"] .bm-section,
-html.bm[data-bm-theme="pop"] .bm-course {
+/* Course page sections are coloured blocks (--c). */
+html.bm[data-bm-theme="pop"] .bm-section {
   overflow: hidden; background: var(--c, var(--hot)); color: var(--ink);
   border: 4px solid var(--ink); border-radius: 14px; box-shadow: 6px 6px 0 var(--ink);
   transition: box-shadow .15s, translate .15s var(--bm-ease);
 }
 html.bm[data-bm-theme="pop"] .bm-section { padding: 0; }
 html.bm[data-bm-theme="pop"] .bm-section:not(.is-collapsed) { box-shadow: 9px 9px 0 var(--ink); }
-html.bm[data-bm-theme="pop"] .bm-section:hover,
-html.bm[data-bm-theme="pop"] .bm-course:hover { translate: -2px -2px; box-shadow: 9px 9px 0 var(--ink); background: var(--c, var(--hot)); }
+html.bm[data-bm-theme="pop"] .bm-section:hover { translate: -2px -2px; box-shadow: 9px 9px 0 var(--ink); background: var(--c, var(--hot)); }
 html.bm[data-bm-theme="pop"] .bm-section-head { padding: 14px 16px; font-size: clamp(1.05rem, 3.4vw, 1.5rem); line-height: 1.05; letter-spacing: -.01em; }
 html.bm[data-bm-theme="pop"] .bm-section-head::before { color: var(--ink); }
 html.bm[data-bm-theme="pop"] .bm-section-head .bm-small {
@@ -122,24 +117,15 @@ html.bm[data-bm-theme="pop"] .bm-label { padding-left: 4px; }
 html.bm[data-bm-theme="pop"] .bm-subhead { padding: 6px 2px 0; color: var(--ink); font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
 html.bm[data-bm-theme="pop"] .bm-icon { filter: none; opacity: 1; }
 
-/* Course list on the dashboard. */
-html.bm[data-bm-theme="pop"] .bm-course-list { gap: 14px; }
-html.bm[data-bm-theme="pop"] .bm-course-strip .bm-course-name { font-size: 1.05rem; }
-html.bm[data-bm-theme="pop"] .bm-strip-btn:active:not(:disabled) { translate: 2px 2px; box-shadow: none; }
-html.bm[data-bm-theme="pop"] .bm-course { margin: 0; padding: 12px 14px; }
-html.bm[data-bm-theme="pop"] .bm-course-name { font: 900 clamp(1rem, 2.4vw, 1.25rem) / 1.05 var(--bm-font-display); text-transform: uppercase; }
-html.bm[data-bm-theme="pop"] .bm-course-code { color: var(--ink); font-weight: 800; text-transform: uppercase; }
-html.bm[data-bm-theme="pop"] .bm-course-img { border: 3px solid var(--ink); }
-
 /* Deadlines = event cards with a thick coloured left edge. */
-html.bm[data-bm-theme="pop"] .bm-due-items { display: grid; gap: 8px; }
+html.bm[data-bm-theme="pop"] .bm-due-items { display: grid; gap: 7px; }
 html.bm[data-bm-theme="pop"] .bm-due-item {
-  margin: 0; padding: 8px 12px; background: #fff;
-  border: 3px solid var(--ink); border-left: 12px solid var(--hot); border-radius: 10px;
+  margin: 0; padding: 6px 10px; background: #fff;
+  border: 2.5px solid var(--ink); border-left: 9px solid var(--c, var(--hot)); border-radius: 10px;
 }
 html.bm[data-bm-theme="pop"] .bm-due-item:hover { background: #fff; translate: -2px -2px; box-shadow: 3px 3px 0 var(--ink); transition: translate .15s var(--bm-ease), box-shadow .15s; }
 html.bm[data-bm-theme="pop"] .bm-due-group.is-overdue .bm-due-item {
-  border-color: var(--red); border-left-color: var(--red); box-shadow: 6px 6px 0 var(--red);
+  border-color: var(--red); border-left-color: var(--red); box-shadow: 3px 3px 0 var(--red);
   background: repeating-linear-gradient(-45deg, #ffe9e9 0 12px, #ffe0e0 12px 24px);
 }
 html.bm[data-bm-theme="pop"] .bm-due-count {
@@ -150,10 +136,9 @@ html.bm[data-bm-theme="pop"] .bm-due-pill { font-weight: 800; }
 html.bm[data-bm-theme="pop"] .bm-due-pill.is-overdue { border-color: var(--red); background: #ffe9e9; }
 html.bm[data-bm-theme="pop"] .bm-due-label { background: var(--sun); border: 2px solid var(--ink); border-radius: 6px; padding: 2px 8px; color: var(--ink); transform: rotate(-2deg); }
 
-/* Announcements: cards with a sky edge. */
-html.bm[data-bm-theme="pop"] .bm-news-list { display: grid; gap: 8px; }
-html.bm[data-bm-theme="pop"] .bm-news-list li + li { border-top: 0; }
-html.bm[data-bm-theme="pop"] .bm-news-item { padding: 8px 12px; background: #fff; border: 3px solid var(--ink); border-left: 12px solid var(--sky); border-radius: 10px; }
+/* Forum posts on the dashboard: cards with the course colour on the edge. */
+html.bm[data-bm-theme="pop"] .bm-news-list { display: grid; gap: 7px; }
+html.bm[data-bm-theme="pop"] .bm-news-item { padding: 6px 10px; background: #fff; border: 2.5px solid var(--ink); border-left: 9px solid var(--c, var(--sky)); border-radius: 10px; }
 html.bm[data-bm-theme="pop"] .bm-news-item:hover { color: var(--ink); background: var(--sun); }
 
 /* Empty states: dashed box. */
@@ -222,38 +207,36 @@ html.bm[data-bm-theme="pop"] .bm-reply { background: var(--paper); border: 2px s
 html.bm[data-bm-theme="pop"] .bm-badge { background: var(--hot); color: var(--ink); border: 2px solid var(--ink); font-weight: 800; }
 html.bm[data-bm-theme="pop"] .bm-tag { background: var(--sun); color: var(--ink); border: 2px solid var(--ink); font-weight: 800; text-transform: uppercase; }
 
-/* Dashboard: the Forum updates fold arrow, New posts, and the two shortcut tiles (sun and sky). */
+/* Dashboard: the Forums fold arrow and New posts. */
 html.bm[data-bm-theme="pop"] .bm-fold-head::after { color: var(--ink); font-size: 1rem; }
 html.bm[data-bm-theme="pop"] .bm-news-item.is-new { border-left-color: var(--hot); }
-html.bm[data-bm-theme="pop"] .bm-shortcut {
-  border: 4px solid var(--ink); border-radius: 16px; box-shadow: 6px 6px 0 var(--ink);
-  transition: translate .15s var(--bm-ease), box-shadow .15s;
+/* Course cards: white, ink border, a thick band in the course colour; a button that has something new
+ * fills with the course colour and shows its count. */
+html.bm[data-bm-theme="pop"] .bm-course {
+  background: #fff; color: var(--ink); border: 3px solid var(--ink); border-top: 11px solid var(--c, var(--hot));
+  border-radius: 14px; box-shadow: 5px 5px 0 var(--ink); transition: translate .15s var(--bm-ease), box-shadow .15s;
 }
-html.bm[data-bm-theme="pop"] .bm-shortcut.is-feedback { background: var(--sun); }
-html.bm[data-bm-theme="pop"] .bm-shortcut.is-forums { background: var(--sky); }
-html.bm[data-bm-theme="pop"] .bm-shortcut:hover { translate: -2px -2px; box-shadow: 9px 9px 0 var(--ink); }
-html.bm[data-bm-theme="pop"] .bm-shortcut.is-feedback:hover { background: var(--sun); }
-html.bm[data-bm-theme="pop"] .bm-shortcut.is-forums:hover { background: var(--sky); }
-html.bm[data-bm-theme="pop"] .bm-shortcut:active { translate: 2px 2px; box-shadow: 2px 2px 0 var(--ink); }
-html.bm[data-bm-theme="pop"] .bm-shortcut-label { font-weight: 900; font-size: 1.2rem; letter-spacing: -.01em; }
-html.bm[data-bm-theme="pop"] .bm-shortcut-go {
-  display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%;
-  background: #fff; color: var(--ink); border: 3px solid var(--ink); font-size: 1.4rem; padding-bottom: 3px;
-}
-
-/* Course tiles: white buttons with ink borders on the course colour; the colour dot opens swatches. */
-html.bm[data-bm-theme="pop"] .bm-course-meta { color: var(--ink); font-weight: 800; }
-html.bm[data-bm-theme="pop"] .bm-course-btn { background: #fff; color: var(--ink); border: 2.5px solid var(--ink); font-weight: 800; box-shadow: 2px 2px 0 var(--ink); }
-html.bm[data-bm-theme="pop"] .bm-course-btn:hover { background: var(--sun); }
-html.bm[data-bm-theme="pop"] .bm-swatch-btn { border: 2.5px solid var(--ink); box-shadow: inset 0 0 0 2px #fff; }
-html.bm[data-bm-theme="pop"] .bm-swatches { border: 3px solid var(--ink); border-radius: 12px; box-shadow: 4px 4px 0 var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-course:hover { translate: -2px -2px; box-shadow: 7px 7px 0 var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-course-code { color: var(--ink); font-weight: 800; text-transform: uppercase; }
+html.bm[data-bm-theme="pop"] .bm-course-name { font: 900 1.02rem / 1.1 var(--bm-font-display); text-transform: uppercase; letter-spacing: -.01em; }
+html.bm[data-bm-theme="pop"] .bm-course-week { color: var(--ink); font-weight: 700; }
+html.bm[data-bm-theme="pop"] .bm-cbtn { background: #fff; color: var(--ink); border: 2.5px solid var(--ink); border-radius: 8px; font-weight: 800; box-shadow: 2px 2px 0 var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-cbtn:hover { background: var(--sun); }
+html.bm[data-bm-theme="pop"] .bm-cbtn.has-count { background: var(--c, var(--hot)); border-color: var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-cbtn:active { translate: 1px 1px; box-shadow: 1px 1px 0 var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-count { background: var(--ink); color: #fff; border: 2px solid #fff; line-height: 16px; }
+html.bm[data-bm-theme="pop"] .bm-swatch-btn { width: 18px; height: 18px; border: 2.5px solid var(--ink); }
 html.bm[data-bm-theme="pop"] .bm-swatch { border: 2.5px solid var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-sec-label { color: var(--ink); font-weight: 800; }
+html.bm[data-bm-theme="pop"] .bm-feedback-link {
+  background: var(--sun); color: var(--ink); border: 3px solid var(--ink); border-radius: 12px; box-shadow: 4px 4px 0 var(--ink);
+  font-weight: 900; text-transform: uppercase; transition: translate .15s var(--bm-ease), box-shadow .15s;
+}
+html.bm[data-bm-theme="pop"] .bm-feedback-link:hover { background: var(--sun); translate: -2px -2px; box-shadow: 6px 6px 0 var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-feedback-link span { color: var(--ink); }
 html.bm[data-bm-theme="pop"] .bm-tag-new { background: var(--hot); color: var(--ink); border: 2px solid var(--ink); }
-html.bm[data-bm-theme="pop"] .bm-due-item { border-left-color: var(--c, var(--hot)); }
-html.bm[data-bm-theme="pop"] .bm-news-item { border-left: 10px solid var(--c, var(--sky)); }
-html.bm[data-bm-theme="pop"] .bm-pin-item { background: #fff; border: 3px solid var(--ink); border-left: 10px solid var(--c, var(--sky)); border-radius: 10px; }
+html.bm[data-bm-theme="pop"] .bm-pin-item { background: #fff; border: 2.5px solid var(--ink); border-left: 9px solid var(--c, var(--sky)); border-radius: 10px; }
 html.bm[data-bm-theme="pop"] .bm-pin-item:hover { background: var(--sun); }
-html.bm[data-bm-theme="pop"] .bm-open-forums { background: var(--sky); color: var(--ink); }
 
 /* Course page: progress rings, pins, Quick look. */
 html.bm[data-bm-theme="pop"] .bm-ring { color: var(--ink); background: #fff; border: 2px solid var(--ink); border-radius: 999px; padding: 1px 6px 1px 2px; }
