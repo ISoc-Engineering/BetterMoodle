@@ -277,7 +277,7 @@
         expect(seg.querySelector('.bm-avatar').textContent === 'SS', 'default photo becomes initials');
         const link = seg.querySelector('.bm-post-body a');
         expect(link && link.href === 'https://example.org/log' && link.target === '_blank' && link.rel.includes('noopener'), 'links in posts work and open safely in a new tab');
-        expect(!seg.querySelector('.bm-post-more').hidden, 'a long post offers Show more');
+        await until(() => !seg.querySelector('.bm-post-more').hidden, 'a long post to offer Show more');
         seg.querySelector('.bm-post-more').click();
         expect(seg.querySelector('.bm-post-body').classList.contains('is-open'), 'Show more expands it');
         expect(seg.querySelector('a.bm-post-action[href="/mod/forum/post.php?reply=2020"]'), 'Reply answers the opening post');
@@ -323,6 +323,25 @@
         expect($('.bm-forum-tabs [aria-selected="true"]').dataset.forum === 'all', 'All forums selected');
         const np = $('.bm-forum-head .bm-btn-primary');
         expect(!np.hidden && np.getAttribute('href') === '/mod/forum/post.php?forum=10' && np.textContent === 'New post in Q&A forum', 'New post goes to a forum students can post in');
+      });
+    },
+
+    async forumNoPageContent(check) {
+      await check('works on a UCL page with no #page-content (uses #region-main)', async () => {
+        await until(() => $$('.bm-post').length === 1, '1 post');
+        expect($('#region-main').classList.contains('bm-replaced'), 'the stock content is hidden');
+        expect($('.bm-forum-title').textContent.startsWith('Discrete Mathematics'), 'the right course');
+        expect(!$('.bm-forum-note'), 'no error note');
+      });
+    },
+
+    async forumFails(check) {
+      await check("if Moodle's forum data fails, the page stays usable, says why, and doesn't stick", async () => {
+        await until(() => $('.bm-forum-note'), 'the note');
+        expect($('.bm-forum-note').textContent.includes("couldn't show its forum view"), 'explains what happened');
+        expect($('.bm-forum-note button').textContent === 'Try again', 'offers Try again');
+        expect(!$('#page-content').classList.contains('bm-replaced') && visible($('#stock')), 'Moodle page still shown');
+        expect(localStorage.getItem('bm:classicForum') !== '1', 'not stuck on Classic view next time');
       });
     },
 

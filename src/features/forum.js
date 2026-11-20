@@ -15,13 +15,37 @@ BM.forum = {
   PER_PAGE: 30,
   state: { q: '', show: 'all', sort: 'activity', forum: 'all' },
 
+  // Any problem leaves Moodle's own page in place and says why, in the console and in a small note at
+  // the top of the page (with Try again), so it's never a silent no-op.
   async init() {
-    const anchor = document.querySelector('#page-content');
+    try {
+      const reason = await this.start();
+      if (reason) this.skip(reason);
+    } catch (e) {
+      this.skip(`couldn't reach Moodle's forum data (${e.message || e})`);
+    }
+  },
+
+  skip(reason) {
+    console.info('[BetterMoodle] forum view not shown:', reason);
+    if (this.root) this.setClassic(true, false);
+    const where = BM.pageAnchor();
+    if (!where || document.querySelector('.bm-forum-note')) return;
+    const h = BM.h;
+    where.before(h('p', { class: 'bm-forum-note bm-root bm-muted bm-small' },
+      `BetterMoodle couldn't show its forum view: ${reason}. `,
+      h('button', { class: 'bm-link-btn', onclick: () => location.reload() }, 'Try again')));
+  },
+
+  // Returns a reason string if the feed can't be shown, or nothing once it's on screen.
+  async start() {
+    const anchor = BM.pageAnchor();
     const params = new URLSearchParams(location.search);
-    const onIndex = document.body.id === 'page-mod-forum-index';
-    const id = Number(params.get('id')) || 0;
+    const onIndex = /\/mod\/forum\/index\.php$/.test(location.pathname) || document.body.id === 'page-mod-forum-index';
+    const id = Number(params.get('id')) || (onIndex ? BM.courseIdFromBody() : 0);
     const fid = Number(params.get('f')) || 0;
-    if (!anchor || (!id && !fid)) return;
+    if (!anchor) return 'this page has no main content area to replace';
+    if (!id && !fid) return 'the address has no forum or course id';
 
     const courses = (await BM.store.swr('courses-v2', 60 * 60 * 1000, () => BM.api.courses(), () => {})) || [];
     const visits = await BM.recent.all();
@@ -34,23 +58,19 @@ BM.forum = {
     let courseId = onIndex ? id : 0;
     if (!onIndex) {
       const f = this.allForums.find((x) => (id && x.cmid === id) || (fid && x.id === fid));
-      if (!f) return;
+      if (!f) return "this forum isn't in your current courses";
       courseId = f.course;
       this.state.forum = f.id;
     }
     this.courseId = courseId;
     this.forums = this.allForums.filter((f) => f.course === courseId)
       .sort((a, b) => (b.type === 'news') - (a.type === 'news') || a.name.localeCompare(b.name));
-    if (!this.forums.length) return;
+    if (!this.forums.length) return "Moodle didn't list any forums for this course";
     BM.recent.visit(courseId);
 
     this.build(anchor);
-    try {
-      await this.loadAll();
-    } catch (e) {
-      console.warn('[BetterMoodle] forum feed failed', e);
-      this.setClassic(true);
-    }
+    await this.loadAll(); // errors go to init(), which falls back to the classic page for this visit only
+    return '';
   },
 
   build(anchor) {
@@ -101,9 +121,10 @@ BM.forum = {
     this.renderTabs();
   },
 
-  setClassic(v) {
+  // remember=false is for automatic fallbacks: only your own clicks on the toggle are remembered.
+  setClassic(v, remember = true) {
     this.classic = v;
-    try { localStorage.setItem('bm:classicForum', v ? '1' : '0'); } catch (_) {}
+    if (remember) { try { localStorage.setItem('bm:classicForum', v ? '1' : '0'); } catch (_) {} }
     this.anchor.classList.toggle('bm-replaced', !v);
     this.layout.hidden = v;
     this.toggle.textContent = v ? 'Use BetterMoodle view' : 'Classic view';

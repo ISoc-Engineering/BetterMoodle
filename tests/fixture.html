@@ -57,6 +57,8 @@ if (flags.get('forumapi') === 'fail') {
 </div></div></div>
 <script>
 const content = document.getElementById('page-content');
+// nocontent=1: like some real UCL pages, there's no #page-content, only #region-main.
+if (flags.get('nocontent') === '1') content.id = 'region-main';
 if (location.pathname.startsWith('/my/')) {
   document.body.id = 'page-my-index';
   // Stock dashboard blocks: the announcements fallback reads these. Includes a duplicate, an external link and a javascript: link.

@@ -48,6 +48,11 @@ BM.cfg = (() => {
   };
 })();
 
+// Where our views go: Moodle's main content box. UCL pages don't all have #page-content (the
+// dashboard doesn't), so fall back through the other wrappers Moodle uses.
+BM.pageAnchor = () => document.querySelector('#page-content') || document.querySelector('#region-main')
+  || document.querySelector('[role="main"]') || document.querySelector('#topofscroll > .row') || document.querySelector('#topofscroll');
+
 BM.courseIdFromBody = () => {
   const c = [...document.body.classList].find((x) => /^course-\d+$/.test(x));
   return c ? Number(c.slice(7)) : 0;

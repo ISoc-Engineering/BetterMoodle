@@ -30,7 +30,8 @@ var BM = globalThis.BM;
     BM.palette.init();
     if (id === 'page-my-index') await BM.home.init();
     else if (/^page-course-view-/.test(id)) await BM.course.init(BM.courseIdFromBody());
-    else if (id === 'page-mod-forum-view' || id === 'page-mod-forum-index') await BM.forum.init();
+    // Forum pages are matched by address too, in case UCL's theme gives them a different body id.
+    else if (/^page-mod-forum-(view|index)$/.test(id) || /\/mod\/forum\/(view|index)\.php$/.test(location.pathname)) await BM.forum.init();
   } catch (e) {
     console.warn('[BetterMoodle] feature failed; leaving the stock page alone', e);
   }
