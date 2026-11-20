@@ -31,7 +31,7 @@ BM.home = {
         this.coursesEl),
       h('div', { class: 'bm-home-grid' },
         h('section', { class: 'bm-panel', 'aria-labelledby': 'bm-h-due' }, h('h2', { class: 'bm-h2', id: 'bm-h-due' }, 'Due soon'), this.dueEl),
-        h('div', { class: 'bm-home-side' }, this.newsPanel(), this.feedbackPanel())));
+        h('div', { class: 'bm-home-side' }, this.newsPanel(), this.shortcuts())));
     addEventListener('resize', () => this.updateArrows(), { passive: true });
     const root = h('div', { id: 'bm-home', class: 'bm-root' },
       h('div', { class: 'bm-home-top' },
@@ -56,17 +56,23 @@ BM.home = {
     this.visits = await BM.recent.all();
     const courses = await BM.store.swr('courses-v2', 60 * 60 * 1000, () => BM.api.courses(), (c) => this.renderCourses(c), err(this.coursesEl));
 
-    // Announcements come from Moodle's forum web services. If UCL doesn't allow those over AJAX,
-    // fall back to the forum links Moodle itself prints in the (hidden) stock dashboard blocks.
-    await BM.store.swr('news', 15 * 60 * 1000, async () => {
+    // Forum updates: the newest posts in every forum of every current course, read from the forum
+    // pages (UCL blocks the forum web services). "New" = posted since your previous dashboard visit,
+    // or unread in Moodle. If the pages can't be read, fall back to the forum links Moodle prints in
+    // the (hidden) stock dashboard blocks.
+    let seen = 0;
+    try { seen = Number(localStorage.getItem('bm:forumSeen')) || 0; } catch (_) {}
+    this.newSince = seen || BM.now() - 3 * 86400;
+    setTimeout(() => { try { localStorage.setItem('bm:forumSeen', String(BM.now())); } catch (_) {} }, 4000);
+    await BM.store.swr('forum-updates-v1', 10 * 60 * 1000, async () => {
       try {
-        return (await BM.api.announcements(courses || [])).slice(0, 8);
+        return await BM.forumData.recent(courses || []);
       } catch (e) {
         const scraped = this.scrapeNews(anchor);
         if (scraped.length) return scraped;
         throw e;
       }
-    }, (n) => this.renderNews(n), () => this.newsEl.replaceChildren(h('p', { class: 'bm-muted' }, "Couldn't load announcements.")));
+    }, (n) => this.renderNews(n), () => this.newsEl.replaceChildren(h('p', { class: 'bm-muted' }, "Couldn't load forum updates.")));
   },
 
   renderDue(all) {
@@ -204,15 +210,13 @@ BM.home = {
     this.prevBtn.hidden = this.nextBtn.hidden = max <= 1; // everything fits: no arrows
   },
 
-  // Announcements: open by default; the heading folds it away (remembered). "All forums" opens the
-  // forum page (forum.js) on your newest course's Announcements forum.
+  // Forum updates: open by default; the heading folds it away (remembered).
   newsPanel() {
     const h = BM.h;
     let folded = false;
     try { folded = localStorage.getItem('bm:fold:news') === '1'; } catch (_) {}
-    this.forumsLink = h('a', { class: 'bm-link-btn', hidden: true }, 'All forums');
     const head = h('button', { class: 'bm-fold-head', 'aria-expanded': String(!folded), 'aria-controls': 'bm-news-body' },
-      h('h2', { class: 'bm-h2', id: 'bm-h-news' }, 'Announcements'));
+      h('h2', { class: 'bm-h2', id: 'bm-h-news' }, 'Forum updates'));
     const body = h('div', { id: 'bm-news-body', hidden: folded }, this.newsEl);
     head.addEventListener('click', () => {
       const open = head.getAttribute('aria-expanded') !== 'true';
@@ -221,7 +225,7 @@ BM.home = {
       if (open) { body.hidden = false; BM.slide(body, true); } else BM.slide(body, false, () => { body.hidden = head.getAttribute('aria-expanded') !== 'true'; });
     });
     return h('section', { class: 'bm-panel bm-news-panel', 'aria-labelledby': 'bm-h-news' },
-      h('div', { class: 'bm-panel-head' }, head, h('div', { class: 'bm-spacer' }), this.forumsLink), body);
+      h('div', { class: 'bm-panel-head' }, head), body);
   },
 
   // The Feedback tracker: the same page as the "Feedback tracker" link in Moodle's top bar (read from
@@ -232,30 +236,30 @@ BM.home = {
     return link ? link.getAttribute('href') : '/report/myfeedback/index.php';
   },
 
-  feedbackPanel() {
+  // Two big shortcuts; the names say what they are.
+  shortcuts() {
     const h = BM.h;
-    this.forumsBtn = h('a', { class: 'bm-btn', href: '#', hidden: true }, 'Open forums');
-    return h('section', { class: 'bm-panel bm-feedback-panel', 'aria-labelledby': 'bm-h-feedback' },
-      h('h2', { class: 'bm-h2', id: 'bm-h-feedback' }, 'Feedback'),
-      h('p', { class: 'bm-muted' }, 'Marks and feedback from all your modules, in one place.'),
-      h('a', { class: 'bm-btn bm-btn-primary', href: this.feedbackUrl() }, 'Open feedback tracker'),
-      h('div', { class: 'bm-feedback-forums' },
-        h('h2', { class: 'bm-h2', id: 'bm-h-forums' }, 'Forums'),
-        h('p', { class: 'bm-muted' }, 'Every course discussion as a feed, with replies right under each post.'),
-        this.forumsBtn));
+    const tile = (cls, label, href) => h('a', { class: `bm-shortcut ${cls}`, href },
+      h('span', { class: 'bm-shortcut-label' }, label), h('span', { class: 'bm-shortcut-go', 'aria-hidden': 'true' }, '\u203A'));
+    this.forumsBtn = tile('is-forums', 'Forums', '/mod/forum/index.php');
+    this.forumsBtn.hidden = true;
+    return h('nav', { class: 'bm-shortcuts', 'aria-label': 'Shortcuts' },
+      tile('is-feedback', 'Feedback tracker', this.feedbackUrl()), this.forumsBtn);
   },
 
   renderNews(items) {
     const h = BM.h;
-    const hub = items.find((n) => n.forumUrl);
-    if (hub) { this.forumsLink.href = hub.forumUrl; this.forumsLink.hidden = false; }
-    if (!items.length) { this.newsEl.replaceChildren(h('p', { class: 'bm-muted' }, 'No recent announcements.')); return; }
-    this.newsEl.replaceChildren(h('ul', { class: 'bm-news-list' }, items.map((n) =>
-      h('li', {},
-        h('a', { class: 'bm-news-item', href: n.url },
-          h('span', { class: 'bm-news-title' }, n.title),
+    if (!items.length) { this.newsEl.replaceChildren(h('p', { class: 'bm-muted' }, 'Nothing new in your forums.')); return; }
+    this.newsEl.replaceChildren(h('ul', { class: 'bm-news-list' }, items.map((n) => {
+      const fresh = n.unread > 0 || (n.ts && n.ts > this.newSince);
+      return h('li', {},
+        h('a', { class: 'bm-news-item' + (fresh ? ' is-new' : ''), href: n.url },
+          h('span', { class: 'bm-news-top' },
+            h('span', { class: 'bm-news-title' }, n.title),
+            fresh ? h('span', { class: 'bm-badge' }, 'New') : null),
           h('span', { class: 'bm-muted bm-small' },
-            [this.shortCourse(n.courseName), n.author, n.ts ? BM.ago(n.ts) : ''].filter(Boolean).join(' · ')))))));
+            [this.shortCourse(n.courseName), n.forumName, n.author, n.ts ? BM.ago(n.ts) : ''].filter(Boolean).join(' \u00b7 '))));
+    })));
   },
 
   // Fallback: forum discussion links that Moodle printed into the stock dashboard's blocks.

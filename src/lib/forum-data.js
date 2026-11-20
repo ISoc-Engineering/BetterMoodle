@@ -112,6 +112,19 @@ BM.forumData = {
     };
   },
 
+  // The newest discussions across every forum in these courses (announcements, Q&A, everything),
+  // latest activity first. Reads each forum's first page, three at a time.
+  async recent(courses, limit = 8) {
+    const perCourse = await BM.pool(courses, 3, async (c) => (await this.forums(c.id)).map((f) => ({ ...f, courseName: c.name })));
+    const forums = perCourse.flat().filter(Boolean);
+    const lists = await BM.pool(forums, 3, async (f) => (await this.discussions(f, 0)).items.map((d) => ({
+      id: d.id, title: d.title, author: d.lastBy || d.author, ts: d.lastTs || d.created, unread: d.unread,
+      forumName: f.name, courseId: f.course, courseName: f.courseName, url: d.url,
+    })));
+    if (forums.length && lists.every((l) => l === undefined)) throw new Error("the forum pages didn't load");
+    return lists.flat().filter(Boolean).sort((a, b) => b.ts - a.ts).slice(0, limit);
+  },
+
   // Every post in a discussion: the opening post and the replies, each with its parent.
   // At most three discussion pages load at once, so scrolling a long feed doesn't flood Moodle.
   running: 0,

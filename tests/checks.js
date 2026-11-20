@@ -78,9 +78,14 @@
         strip.scrollLeft = strip.scrollWidth;
         await until(() => next.disabled, 'right arrow off at the end');
       });
-      await check('announcements from the forum API, newest first', async () => {
-        await until(() => $$('.bm-news-item').length === 2, '2 announcements');
-        expect(texts('.bm-news-title')[0] === 'Problem class moved', 'newest announcement should be first');
+      await check('forum updates: newest posts from every forum in every course, new ones tagged', async () => {
+        await until(() => $$('.bm-news-item').length === 6, '6 forum posts');
+        const t = texts('.bm-news-title');
+        expect(t[0] === 'Problem class moved' && t[1] === 'Segfault in the maze solver', `newest first, got ${t.slice(0, 2).join(' | ')}`);
+        expect($$('.bm-news-item')[1].textContent.includes('Q&A forum'), 'not just announcements: Q&A posts too, with the forum named');
+        const isNew = (title) => $$('.bm-news-item').find((a) => a.textContent.includes(title)).classList.contains('is-new');
+        expect(isNew('Problem class moved') && isNew('Lab room change'), 'recent or unread posts are tagged New');
+        expect(!isNew('Coursework FAQ'), 'an old, read post is not');
       });
       await check('tick off a deadline, then undo it', async () => {
         const row = $$('.bm-due-row').find((r) => r.textContent.includes('Proofs problem set'));
@@ -94,23 +99,22 @@
         await BM.done.queue;
         expect(!(await BM.done.all())[903], 'no longer remembered as done');
       });
-      await check('Announcements fold away and back; All forums and Feedback links', async () => {
+      await check('Forum updates fold away and back; Feedback tracker and Forums shortcuts below', async () => {
         const head = $('.bm-news-panel .bm-fold-head');
-        expect(head.getAttribute('aria-expanded') === 'true' && !$('#bm-news-body').hidden, 'Announcements start open');
+        expect(head.textContent === 'Forum updates', 'panel is called Forum updates');
+        expect(head.getAttribute('aria-expanded') === 'true' && !$('#bm-news-body').hidden, 'starts open');
         head.click();
-        await until(() => $('#bm-news-body').hidden, 'Announcements to fold away');
+        await until(() => $('#bm-news-body').hidden, 'to fold away');
         expect(localStorage.getItem('bm:fold:news') === '1', 'the choice is remembered');
         head.click();
-        await until(() => !$('#bm-news-body').hidden, 'Announcements to open again');
-        await until(() => !$('.bm-news-panel .bm-link-btn').hidden, 'All forums link');
-        expect($('.bm-news-panel .bm-link-btn').getAttribute('href') === '/mod/forum/view.php?id=3011', 'All forums opens the forum page (newest announcement first)');
-        const fb = $('.bm-feedback-panel a.bm-btn-primary');
-        expect(fb && fb.getAttribute('href') === '/local/ucl_tracker/index.php', `Feedback opens the same page as the top bar's Feedback tracker, got ${fb && fb.getAttribute('href')}`);
-        await until(() => !$('.bm-feedback-forums .bm-btn').hidden, 'Open forums button');
+        await until(() => !$('#bm-news-body').hidden, 'to open again');
+        const fb = $('.bm-shortcut.is-feedback');
+        expect(fb && fb.getAttribute('href') === '/local/ucl_tracker/index.php', `Feedback tracker = the top bar's link, got ${fb && fb.getAttribute('href')}`);
+        expect(fb.textContent.trim().startsWith('Feedback tracker') && !$('.bm-shortcuts p'), 'just the name, no explaining sentence');
+        await until(() => !$('.bm-shortcut.is-forums').hidden, 'Forums shortcut');
         const firstCourse = $('.bm-course').getAttribute('href').split('id=')[1];
-        expect($('.bm-feedback-forums .bm-btn').getAttribute('href') === `/mod/forum/index.php?id=${firstCourse}`, 'Open forums goes to the most recently used course');
-        expect(fb.closest('.bm-home-side') === $('.bm-news-panel').closest('.bm-home-side') &&
-          ($('.bm-news-panel').compareDocumentPosition($('.bm-feedback-panel')) & Node.DOCUMENT_POSITION_FOLLOWING), 'Feedback sits below Announcements');
+        expect($('.bm-shortcut.is-forums').getAttribute('href') === `/mod/forum/index.php?id=${firstCourse}`, 'Forums opens your most recently used course');
+        expect($('.bm-news-panel').compareDocumentPosition($('.bm-shortcuts')) & Node.DOCUMENT_POSITION_FOLLOWING, 'shortcuts sit below Forum updates');
       });
       await check('classic dashboard toggle swaps views', async () => {
         const btn = $('.bm-home-top .bm-link-btn');
