@@ -20,6 +20,14 @@ Beta installs don't auto-update. To update, download the new zip, replace the fo
 
 Load this repo folder unpacked as described above. There's no build step; it's plain JavaScript. After editing, click reload on the extension card and refresh Moodle.
 
+To run the automated checks against a fake Moodle (needs Python 3 and Firefox or Chrome, no packages):
+
+```
+python tests/run.py
+```
+
+It prints PASS/FAIL for each check. The checks themselves are in `tests/checks.js`.
+
 ### Releasing
 
 Bump `version` in `manifest.json`, then run `scripts/package.sh` to create `dist/bettermoodle-<version>.zip`. Tag the commit `v<version>`, and upload that same zip to the Chrome Web Store, Firefox Add-ons and a GitHub Release. Store copy, permission justifications and the screenshot checklist are in [store/LISTING.md](store/LISTING.md).

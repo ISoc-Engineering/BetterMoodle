@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>BetterMoodle checks</title>
+</head>
+<body>
+<p id="status">Starting…</p>
+<script>
+// Test driver. tests/run.py opens this page in a headless browser.
+//
+// The extension skips its features inside iframes (it treats them as its own viewer), so each scenario
+// is a real page load of tests/fixture.html in this tab. Each page runs its checks (tests/checks.js),
+// saves the results in sessionStorage and moves on to the next scenario. When the queue is empty it
+// comes back here with ?done, and this page sends everything to run.py.
+const SCENARIOS = [
+  '/my/?check=home',
+  '/my/?check=homeSoft&theme=soft',
+  '/my/?check=homeForumFallback&forumapi=fail',
+  '/my/?check=storageFails&storage=fail',
+  '/my/?check=switchedOff&enabled=0',
+  '/course/view.php?id=101&check=course',
+  '/course/view.php?id=101&check=coursePopAggressive&theme=pop&aggressive=1',
+];
+
+const status = document.getElementById('status');
+if (new URLSearchParams(location.search).has('done')) {
+  const results = JSON.parse(sessionStorage.getItem('bm-test-results') || '[]');
+  const failures = results.filter((r) => r.startsWith('FAIL')).length;
+  status.textContent = `${results.length - failures} passed, ${failures} failed`;
+  fetch('/report', { method: 'POST', body: JSON.stringify({ results, failures }) });
+} else {
+  sessionStorage.setItem('bm-test-results', '[]');
+  sessionStorage.setItem('bm-test-queue', JSON.stringify(SCENARIOS.slice(1)));
+  location.href = SCENARIOS[0];
+}
+</script>
+</body>
+</html>
