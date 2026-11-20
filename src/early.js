@@ -2,10 +2,10 @@
 // The on/off flag and theme are mirrored into the page's localStorage by main.js because chrome.storage is async.
 (() => {
   const root = document.documentElement;
-  let off = false, theme = 'minimal';
+  let off = false, theme = 'pop';
   try {
     off = localStorage.getItem('bm:off') === '1';
-    theme = localStorage.getItem('bm:theme') || 'minimal';
+    theme = localStorage.getItem('bm:theme') || 'pop';
   } catch (_) {}
   if (off) return;
   root.classList.add('bm');

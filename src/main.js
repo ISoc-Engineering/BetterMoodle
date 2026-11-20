@@ -9,7 +9,7 @@ var BM = globalThis.BM;
   let s = {};
   try { s = await chrome.storage.local.get(['enabled', 'aggressive', 'theme']); } catch (_) {}
   const enabled = s.enabled !== false;
-  BM.settings = { aggressive: enabled && s.aggressive === true, theme: s.theme || 'minimal' };
+  BM.settings = { aggressive: enabled && s.aggressive === true, theme: s.theme || 'pop' };
   try { localStorage.setItem('bm:off', enabled ? '0' : '1'); } catch (_) {}
   try {
     chrome.storage.onChanged.addListener((ch) => {

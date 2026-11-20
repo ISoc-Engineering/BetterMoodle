@@ -100,10 +100,10 @@ BM.pool = async (items, limit, fn) => {
 };
 
 // ---- themes ----
-// Theme names match src/styles/themes/<name>.css. 'minimal' is the default and has no file (tokens.css).
+// Theme names match src/styles/themes/<name>.css ('minimal' has no file: it's the plain tokens.css). 'pop' is the default.
 BM.THEMES = ['minimal', 'soft', 'pop'];
 BM.applyTheme = (name) => {
-  const t = BM.THEMES.includes(name) ? name : 'minimal';
+  const t = BM.THEMES.includes(name) ? name : 'pop';
   document.documentElement.dataset.bmTheme = t;
   try { localStorage.setItem('bm:theme', t); } catch (_) {} // read by early.js on the next page, before paint
   return t;

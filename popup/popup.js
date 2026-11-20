@@ -1,6 +1,6 @@
 // Settings live in chrome.storage.local. Open Moodle tabs reload themselves via
 // chrome.storage.onChanged in main.js (themes switch live, without a reload).
-const DEFAULTS = { enabled: true, aggressive: false, theme: 'minimal' };
+const DEFAULTS = { enabled: true, aggressive: false, theme: 'pop' };
 const enabled = document.getElementById('enabled');
 const aggressive = document.getElementById('aggressive');
 const theme = document.getElementById('theme');
