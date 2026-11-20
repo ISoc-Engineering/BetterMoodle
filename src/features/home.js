@@ -140,6 +140,8 @@ BM.home = {
     }));
     if (first) BM.enter(this.coursesEl.querySelectorAll('.bm-course'));
     this.updateArrows();
+    // Forums opens on the course you used most recently.
+    if (this.forumsBtn && sorted[0]) { this.forumsBtn.href = `/mod/forum/index.php?id=${sorted[0].id}`; this.forumsBtn.hidden = false; }
   },
 
   // The big headline: how much is due this week, then the next deadline with a ticking countdown.
@@ -222,13 +224,25 @@ BM.home = {
       h('div', { class: 'bm-panel-head' }, head, h('div', { class: 'bm-spacer' }), this.forumsLink), body);
   },
 
-  // UCL's My Feedback report: marks and feedback from every module on one page.
+  // The Feedback tracker: the same page as the "Feedback tracker" link in Moodle's top bar (read from
+  // that link, so it always matches), then a way into the forum feeds.
+  feedbackUrl() {
+    const link = [...document.querySelectorAll('#ucl-navbar a[href], .primary-navigation a[href], nav a[href]')]
+      .find((a) => /feedback\s*tracker/i.test(a.textContent));
+    return link ? link.getAttribute('href') : '/report/myfeedback/index.php';
+  },
+
   feedbackPanel() {
     const h = BM.h;
+    this.forumsBtn = h('a', { class: 'bm-btn', href: '#', hidden: true }, 'Open forums');
     return h('section', { class: 'bm-panel bm-feedback-panel', 'aria-labelledby': 'bm-h-feedback' },
       h('h2', { class: 'bm-h2', id: 'bm-h-feedback' }, 'Feedback'),
       h('p', { class: 'bm-muted' }, 'Marks and feedback from all your modules, in one place.'),
-      h('a', { class: 'bm-btn bm-btn-primary', href: '/report/myfeedback/index.php' }, 'Open feedback tracker'));
+      h('a', { class: 'bm-btn bm-btn-primary', href: this.feedbackUrl() }, 'Open feedback tracker'),
+      h('div', { class: 'bm-feedback-forums' },
+        h('h2', { class: 'bm-h2', id: 'bm-h-forums' }, 'Forums'),
+        h('p', { class: 'bm-muted' }, 'Every course discussion as a feed, with replies right under each post.'),
+        this.forumsBtn));
   },
 
   renderNews(items) {

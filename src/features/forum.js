@@ -1,210 +1,307 @@
-// Forum page (/mod/forum/view.php): replaces Moodle's discussion table with an organised view.
-//   Left: every forum in your current courses, grouped by course (most recently used course first),
-//         so you can hop between forums without going back to the course.
-//   Right: this forum's discussions, grouped by when they were last active (pinned first), with search,
-//          All / Unread / Pinned / Started by me filters, sorting, unread counts and the last reply.
-// Clicking a discussion opens it in the side viewer (j/k steps through them); Ctrl/Shift-click opens a tab.
-// If anything fails, the stock Moodle page is left alone.
+// Course forums as a feed (/mod/forum/index.php?id=<course> and /mod/forum/view.php?id=<cmid>).
+//
+//   Left:  your courses (most recently used first), each with its unread count. Pick one to see its feed.
+//   Main:  the course name, one tab per forum ("All forums" merges them), then a feed of posts:
+//          author and photo, forum, time, title, the opening post with working links, and a
+//          "replies" button that opens the whole thread right under the post. Reply opens Moodle's
+//          reply form for that exact post; "Open in Moodle" shows the original page.
+// Search, a Show filter (unread, pinned, started by me) and sorting sit above the feed.
+// Nothing is posted from here. If anything fails, the stock Moodle page is left alone.
 var BM = globalThis.BM;
 
 BM.forum = {
-  FILTERS: [['all', 'All'], ['unread', 'Unread'], ['pinned', 'Pinned'], ['mine', 'Started by me']],
+  SHOW: [['all', 'Everything'], ['unread', 'Unread'], ['pinned', 'Pinned'], ['mine', 'Started by me']],
   SORTS: [['activity', 'Latest activity'], ['newest', 'Newest first'], ['replies', 'Most replies']],
-  PER_PAGE: 100,
-  state: { q: '', filter: 'all', sort: 'activity' },
+  PER_PAGE: 30,
+  state: { q: '', show: 'all', sort: 'activity', forum: 'all' },
 
   async init() {
     const anchor = document.querySelector('#page-content');
     const params = new URLSearchParams(location.search);
-    const cmid = Number(params.get('id')) || 0;
+    const onIndex = document.body.id === 'page-mod-forum-index';
+    const id = Number(params.get('id')) || 0;
     const fid = Number(params.get('f')) || 0;
-    if (!anchor || (!cmid && !fid)) return;
+    if (!anchor || (!id && !fid)) return;
 
-    // Which forums exist: every forum in your current courses, plus this page's course.
     const courses = (await BM.store.swr('courses-v2', 60 * 60 * 1000, () => BM.api.courses(), () => {})) || [];
-    const courseIds = [...new Set([...courses.map((c) => c.id), BM.cfg().courseId].filter(Boolean))];
-    const forums = await BM.api.forums(courseIds);
-    const forum = forums.find((f) => (cmid && f.cmid === cmid) || (fid && f.id === fid));
-    if (!forum) return;
-    this.forum = forum;
-    this.discussions = [];
-    this.page = 0;
+    const visits = await BM.recent.all();
+    const order = new Map(courses.map((c, i) => [c.id, i]));
+    this.courses = courses.slice().sort((a, b) => ((visits[b.id] || 0) - (visits[a.id] || 0)) || (order.get(a.id) - order.get(b.id)));
+    const ids = [...new Set([...courses.map((c) => c.id), BM.cfg().courseId].filter(Boolean))];
+    this.allForums = await BM.api.forums(ids);
 
-    const h = BM.h;
-    this.listEl = h('div', { class: 'bm-forum-list', 'aria-live': 'polite' }, h('p', { class: 'bm-muted' }, 'Loading discussions…'));
-    this.moreEl = h('button', { class: 'bm-btn', hidden: true, onclick: () => this.loadMore() }, 'Load more');
-    this.countEl = h('span', { class: 'bm-muted' });
-    this.input = h('input', { type: 'search', class: 'bm-input', placeholder: 'Search discussions…  ( / )', 'aria-label': 'Search discussions' });
-    this.input.addEventListener('input', () => { this.state.q = this.input.value.trim().toLowerCase(); this.render(); });
-    this.chipsEl = h('div', { class: 'bm-chips', role: 'group', 'aria-label': 'Show' },
-      this.FILTERS.map(([k, label]) => h('button', {
-        class: 'bm-chip', dataset: { chip: k }, 'aria-pressed': String(k === this.state.filter),
-        onclick: () => { this.state.filter = k; this.render(); },
-      }, label)));
-    const sort = h('select', { class: 'bm-select', 'aria-label': 'Sort discussions' },
-      this.SORTS.map(([k, label]) => h('option', { value: k, selected: k === this.state.sort }, label)));
-    sort.addEventListener('change', () => { this.state.sort = sort.value; this.render(); });
+    // Which course and (optionally) which forum this page is about.
+    let courseId = onIndex ? id : 0;
+    if (!onIndex) {
+      const f = this.allForums.find((x) => (id && x.cmid === id) || (fid && x.id === fid));
+      if (!f) return;
+      courseId = f.course;
+      this.state.forum = f.id;
+    }
+    this.courseId = courseId;
+    this.forums = this.allForums.filter((f) => f.course === courseId)
+      .sort((a, b) => (b.type === 'news') - (a.type === 'news') || a.name.localeCompare(b.name));
+    if (!this.forums.length) return;
+    BM.recent.visit(courseId);
 
-    const course = courses.find((c) => c.id === forum.course);
-    const toggle = h('button', { class: 'bm-link-btn' });
-    this.root = h('div', { id: 'bm-forum', class: 'bm-root' },
-      h('div', { class: 'bm-forum-top' }, h('div', { class: 'bm-spacer' }), toggle),
-      h('div', { class: 'bm-forum-layout' },
-        this.rail(forums, courses),
-        h('section', { class: 'bm-forum-main', 'aria-labelledby': 'bm-forum-title' },
-          h('header', { class: 'bm-forum-head' },
-            h('div', { class: 'bm-forum-titles' },
-              h('h1', { class: 'bm-forum-title', id: 'bm-forum-title' }, forum.name, h('span', { class: 'bm-hero-dot' }, '.')),
-              h('p', { class: 'bm-muted' }, course ? course.name : '', ' ', this.countEl)),
-            h('div', { class: 'bm-spacer' }),
-            h('a', { class: 'bm-btn bm-btn-primary', href: `/mod/forum/post.php?forum=${forum.id}` }, 'New discussion')),
-          h('div', { class: 'bm-filterbar' }, this.input, this.chipsEl, h('div', { class: 'bm-spacer' }), sort),
-          this.listEl,
-          h('div', { class: 'bm-forum-more' }, this.moreEl))));
-    anchor.before(this.root);
-
-    let classic = false;
-    try { classic = localStorage.getItem('bm:classicForum') === '1'; } catch (_) {}
-    const setClassic = (v) => {
-      classic = v;
-      try { localStorage.setItem('bm:classicForum', v ? '1' : '0'); } catch (_) {}
-      anchor.classList.toggle('bm-replaced', !v);
-      this.root.querySelector('.bm-forum-layout').hidden = v;
-      toggle.textContent = v ? 'Use BetterMoodle view' : 'Classic view';
-    };
-    toggle.addEventListener('click', () => setClassic(!classic));
-    setClassic(classic);
-
-    document.addEventListener('keydown', (e) => {
-      if (e.key === '/' && !BM.isTyping(e) && !e.metaKey && !e.ctrlKey && !classic) { e.preventDefault(); this.input.focus(); }
-    });
-    BM.viewer.onChange = (it) => {
-      for (const el of this.root.querySelectorAll('.bm-disc.is-active')) el.classList.remove('is-active');
-      if (!it) return;
-      const row = this.root.querySelector(`.bm-disc[data-id="${it.did}"]`);
-      if (row) { row.classList.add('is-active'); row.scrollIntoView({ block: 'nearest' }); this.markRead(it.did); }
-    };
-
+    this.build(anchor);
     try {
-      await this.loadMore();
+      await this.loadAll();
     } catch (e) {
-      console.warn('[BetterMoodle] forum load failed', e);
-      setClassic(true);
+      console.warn('[BetterMoodle] forum feed failed', e);
+      this.setClassic(true);
     }
   },
 
-  // Left rail: forums grouped by course. The current course is open; Announcements forums first.
-  rail(forums, courses) {
+  build(anchor) {
     const h = BM.h;
-    const byCourse = new Map();
-    for (const f of forums) (byCourse.get(f.course) || byCourse.set(f.course, []).get(f.course)).push(f);
-    const order = courses.map((c) => c.id).filter((id) => byCourse.has(id));
-    for (const id of byCourse.keys()) if (!order.includes(id)) order.push(id);
-    const name = (id) => courses.find((c) => c.id === id)?.name || this.forum.courseName || 'This course';
-    return h('nav', { class: 'bm-forum-rail bm-panel', 'aria-label': 'Forums' },
+    const course = this.courses.find((c) => c.id === this.courseId);
+    const [code, ...rest] = (course?.name || '').split(':');
+    const title = rest.length ? rest.join(':').trim() : (course?.name || 'Course forums');
+
+    this.feedEl = h('div', { class: 'bm-feed', 'aria-live': 'polite' }, h('p', { class: 'bm-muted' }, 'Loading posts…'));
+    this.moreEl = h('button', { class: 'bm-btn', hidden: true, onclick: () => this.loadMore() }, 'Load older posts');
+    this.summaryEl = h('span', {});
+    this.newPostEl = h('a', { class: 'bm-btn bm-btn-primary', hidden: true });
+    this.input = h('input', { type: 'search', class: 'bm-input', placeholder: 'Search posts…  ( / )', 'aria-label': 'Search posts' });
+    this.input.addEventListener('input', () => { this.state.q = this.input.value.trim().toLowerCase(); this.render(); });
+    const select = (label, opts, key) => {
+      const s = h('select', { class: 'bm-select', 'aria-label': label }, opts.map(([k, t]) => h('option', { value: k, selected: k === this.state[key] }, t)));
+      s.addEventListener('change', () => { this.state[key] = s.value; this.render(); });
+      return h('label', { class: 'bm-select-wrap' }, h('span', { class: 'bm-muted bm-small' }, label), s);
+    };
+    this.tabsEl = h('div', { class: 'bm-chips bm-forum-tabs', role: 'tablist', 'aria-label': 'Forums in this course' });
+
+    this.toggle = h('button', { class: 'bm-link-btn', onclick: () => this.setClassic(!this.classic) });
+    this.layout = h('div', { class: 'bm-forum-layout' },
+      this.rail(),
+      h('section', { class: 'bm-forum-main', 'aria-labelledby': 'bm-forum-title' },
+        h('header', { class: 'bm-forum-head' },
+          h('div', { class: 'bm-forum-titles' },
+            rest.length ? h('span', { class: 'bm-forum-code' }, code.trim()) : null,
+            h('h1', { class: 'bm-forum-title', id: 'bm-forum-title' }, title, h('span', { class: 'bm-hero-dot' }, '.')),
+            h('p', { class: 'bm-muted' }, this.summaryEl)),
+          h('div', { class: 'bm-spacer' }),
+          this.newPostEl),
+        this.tabsEl,
+        h('div', { class: 'bm-filterbar bm-feed-tools' }, this.input, h('div', { class: 'bm-spacer' }),
+          select('Show', this.SHOW, 'show'), select('Sort', this.SORTS, 'sort')),
+        this.feedEl,
+        h('div', { class: 'bm-forum-more' }, this.moreEl)));
+    this.root = h('div', { id: 'bm-forum', class: 'bm-root' },
+      h('div', { class: 'bm-forum-top' }, h('div', { class: 'bm-spacer' }), this.toggle), this.layout);
+    this.anchor = anchor;
+    anchor.before(this.root);
+
+    try { this.classic = localStorage.getItem('bm:classicForum') === '1'; } catch (_) { this.classic = false; }
+    this.setClassic(this.classic);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === '/' && !BM.isTyping(e) && !e.metaKey && !e.ctrlKey && !this.classic) { e.preventDefault(); this.input.focus(); }
+    });
+    this.renderTabs();
+  },
+
+  setClassic(v) {
+    this.classic = v;
+    try { localStorage.setItem('bm:classicForum', v ? '1' : '0'); } catch (_) {}
+    this.anchor.classList.toggle('bm-replaced', !v);
+    this.layout.hidden = v;
+    this.toggle.textContent = v ? 'Use BetterMoodle view' : 'Classic view';
+  },
+
+  // Left: courses with forums, newest used first. The current one is highlighted.
+  rail() {
+    const h = BM.h;
+    const withForums = this.courses.filter((c) => this.allForums.some((f) => f.course === c.id));
+    if (!withForums.some((c) => c.id === this.courseId)) withForums.unshift({ id: this.courseId, name: 'This course' });
+    return h('nav', { class: 'bm-forum-rail bm-panel', 'aria-label': 'Courses' },
       h('h2', { class: 'bm-h2' }, 'Forums'),
-      order.map((id, i) => {
-        const list = byCourse.get(id).slice().sort((a, b) => (b.type === 'news') - (a.type === 'news') || a.name.localeCompare(b.name));
-        const unread = list.reduce((n, f) => n + (f.unread || 0), 0);
-        return h('details', { class: 'bm-rail-course', open: id === this.forum.course, style: `--c:${BM.colorFor(i)}` },
-          h('summary', {}, h('span', { class: 'bm-rail-course-name' }, name(id)),
-            unread ? h('span', { class: 'bm-badge' }, String(unread)) : null),
-          h('ul', {}, list.map((f) => h('li', {},
-            h('a', { class: 'bm-rail-forum', href: `/mod/forum/view.php?id=${f.cmid}`, 'aria-current': f.id === this.forum.id ? 'page' : null },
-              h('span', {}, f.name), f.unread ? h('span', { class: 'bm-badge' }, String(f.unread)) : null)))));
-      }));
+      h('ul', {}, withForums.map((c, i) => {
+        const [code, ...rest] = c.name.split(':');
+        const unread = this.allForums.filter((f) => f.course === c.id).reduce((n, f) => n + f.unread, 0);
+        return h('li', {},
+          h('a', { class: 'bm-rail-course', href: `/mod/forum/index.php?id=${c.id}`, style: `--c:${BM.colorFor(i)}`,
+            'aria-current': c.id === this.courseId ? 'page' : null },
+            h('span', { class: 'bm-rail-text' },
+              rest.length ? h('span', { class: 'bm-rail-code' }, code.trim()) : null,
+              h('span', { class: 'bm-rail-name' }, rest.length ? rest.join(':').trim() : c.name)),
+            unread ? h('span', { class: 'bm-badge', title: 'Unread posts' }, String(unread)) : null));
+      })));
+  },
+
+  renderTabs() {
+    const h = BM.h;
+    const tab = (key, label, unread) => h('button', {
+      class: 'bm-chip', role: 'tab', 'aria-selected': String(this.state.forum === key), dataset: { forum: String(key) },
+      onclick: () => {
+        this.state.forum = key;
+        const f = this.forums.find((x) => x.id === key);
+        history.replaceState(null, '', f ? `/mod/forum/view.php?id=${f.cmid}` : `/mod/forum/index.php?id=${this.courseId}`);
+        this.renderTabs();
+        this.render();
+      },
+    }, label, unread ? h('span', { class: 'bm-badge' }, String(unread)) : null);
+    this.tabsEl.replaceChildren(
+      tab('all', 'All forums', this.forums.reduce((n, f) => n + f.unread, 0)),
+      ...this.forums.map((f) => tab(f.id, f.name, f.unread)));
+    // "New post" goes to Moodle's form for the chosen forum (or the first one students can post in).
+    const target = this.forums.find((f) => f.id === this.state.forum) || this.forums.find((f) => f.type !== 'news');
+    this.newPostEl.hidden = !target || (this.state.forum === 'all' && target.type === 'news');
+    if (target) {
+      this.newPostEl.href = `/mod/forum/post.php?forum=${target.id}`;
+      this.newPostEl.textContent = this.state.forum === 'all' ? `New post in ${target.name}` : 'New post';
+    }
+  },
+
+  // First page of every forum in the course, merged into one list.
+  async loadAll() {
+    this.posts = [];
+    this.next = new Map(this.forums.map((f) => [f.id, 0])); // forum id -> next page, or -1 when done
+    await this.loadMore();
   },
 
   async loadMore() {
     this.moreEl.disabled = true;
-    const got = await BM.api.discussions(this.forum.id, this.page, this.PER_PAGE);
-    this.discussions.push(...got);
-    this.page++;
-    this.moreEl.hidden = got.length < this.PER_PAGE;
+    const todo = this.forums.filter((f) => this.next.get(f.id) >= 0);
+    const pages = await BM.pool(todo, 3, async (f) => {
+      const page = this.next.get(f.id);
+      const got = await BM.api.discussions(f.id, page, this.PER_PAGE);
+      this.next.set(f.id, got.length < this.PER_PAGE ? -1 : page + 1);
+      return got.map((d) => ({ ...d, forumId: f.id, forumName: f.name, forumCmid: f.cmid }));
+    });
+    this.posts.push(...pages.flat().filter(Boolean));
+    this.moreEl.hidden = ![...this.next.values()].some((n) => n >= 0);
     this.moreEl.disabled = false;
     this.render();
   },
 
-  // The timestamp a discussion is sorted and grouped by.
-  when(d) { return this.state.sort === 'newest' ? d.created : d.lastTs; },
-
   visible() {
-    const { q, filter, sort } = this.state;
+    const { q, show, sort, forum } = this.state;
     const me = BM.cfg().userId;
-    return this.discussions
-      .filter((d) => filter === 'all' || (filter === 'unread' ? d.unread > 0 : filter === 'pinned' ? d.pinned : d.authorId === me))
+    const key = (d) => (sort === 'newest' ? d.created : d.lastTs);
+    return this.posts
+      .filter((d) => forum === 'all' || d.forumId === forum)
+      .filter((d) => show === 'all' || (show === 'unread' ? d.unread > 0 : show === 'pinned' ? d.pinned : d.authorId === me))
       .filter((d) => !q || d.search.includes(q))
-      .sort((a, b) => sort === 'replies' ? (b.replies - a.replies) || (b.lastTs - a.lastTs)
-        : (b.pinned - a.pinned) || (this.when(b) - this.when(a)));
-  },
-
-  group(d) {
-    if (this.state.sort === 'replies') return '';
-    if (d.pinned) return 'Pinned';
-    const t = new Date(this.when(d) * 1000);
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const days = Math.floor((today - new Date(t.getFullYear(), t.getMonth(), t.getDate())) / 86400000);
-    if (days <= 0) return 'Today';
-    if (days === 1) return 'Yesterday';
-    if (days < 7) return 'This week';
-    if (days < 31) return 'This month';
-    return 'Earlier';
+      .sort((a, b) => (sort === 'replies' ? (b.replies - a.replies) || (b.lastTs - a.lastTs) : (b.pinned - a.pinned) || (key(b) - key(a))));
   },
 
   render() {
     const h = BM.h;
-    for (const b of this.chipsEl.children) b.setAttribute('aria-pressed', String(b.dataset.chip === this.state.filter));
-    const all = this.discussions;
-    const unread = all.filter((d) => d.unread > 0).length;
-    this.countEl.textContent = `· ${all.length}${this.moreEl.hidden ? '' : '+'} discussion${all.length === 1 ? '' : 's'}${unread ? `, ${unread} unread` : ''}`;
+    const inForum = this.posts.filter((d) => this.state.forum === 'all' || d.forumId === this.state.forum);
+    const unread = inForum.filter((d) => d.unread > 0).length;
+    this.summaryEl.textContent = `${inForum.length}${this.moreEl.hidden ? '' : '+'} post${inForum.length === 1 ? '' : 's'}${unread ? `, ${unread} with new replies` : ''}`;
     const list = this.visible();
-    this.shown = list;
-    if (!all.length) {
-      this.listEl.replaceChildren(h('div', { class: 'bm-forum-empty' },
-        h('p', {}, 'No discussions yet.'),
-        h('a', { class: 'bm-btn bm-btn-primary', href: `/mod/forum/post.php?forum=${this.forum.id}` }, 'Start one')));
+    if (!inForum.length) {
+      this.feedEl.replaceChildren(h('div', { class: 'bm-forum-empty' }, h('p', {}, 'No posts here yet.'),
+        this.newPostEl.hidden ? null : h('a', { class: 'bm-btn bm-btn-primary', href: this.newPostEl.href }, 'Write the first one')));
       return;
     }
-    if (!list.length) { this.listEl.replaceChildren(h('p', { class: 'bm-muted bm-forum-empty' }, 'Nothing matches. Try All, or clear the search.')); return; }
-    const first = !this.listEl.querySelector('.bm-disc');
-    const groups = new Map();
-    for (const d of list) { const g = this.group(d); (groups.get(g) || groups.set(g, []).get(g)).push(d); }
-    this.listEl.replaceChildren(...[...groups].map(([name, ds]) =>
-      h('section', { class: 'bm-disc-group' },
-        name ? h('h3', { class: 'bm-h3' }, name) : null,
-        h('ul', { class: 'bm-disc-list' }, ds.map((d) => h('li', {}, this.row(d)))))));
-    if (first) BM.enter(this.listEl.querySelectorAll('.bm-disc'));
+    if (!list.length) { this.feedEl.replaceChildren(h('p', { class: 'bm-muted bm-forum-empty' }, 'Nothing matches. Set Show to Everything, or clear the search.')); return; }
+    const first = !this.feedEl.querySelector('.bm-post');
+    const pinned = this.state.sort !== 'replies' ? list.filter((d) => d.pinned) : [];
+    const rest = list.filter((d) => !pinned.includes(d));
+    this.feedEl.replaceChildren(
+      pinned.length ? h('h3', { class: 'bm-h3' }, 'Pinned') : null, ...pinned.map((d) => this.post(d)),
+      pinned.length && rest.length ? h('h3', { class: 'bm-h3' }, 'Latest') : null, ...rest.map((d) => this.post(d)));
+    if (first) BM.enter(this.feedEl.querySelectorAll('.bm-post'));
   },
 
-  row(d) {
+  avatar(name, url, small) {
     const h = BM.h;
-    const a = h('a', { class: 'bm-disc' + (d.unread ? ' is-unread' : ''), href: d.url, dataset: { id: d.id } },
-      h('span', { class: 'bm-disc-dot', 'aria-hidden': 'true' }),
-      h('span', { class: 'bm-disc-main' },
-        h('span', { class: 'bm-disc-title' }, d.title,
-          d.pinned ? h('span', { class: 'bm-tag' }, 'Pinned') : null,
-          d.locked ? h('span', { class: 'bm-tag' }, 'Locked') : null),
-        h('span', { class: 'bm-muted bm-small' }, `${d.author} · started ${BM.ago(d.created)}`)),
-      h('span', { class: 'bm-disc-side' },
-        h('span', { class: 'bm-disc-replies' }, d.replies === 1 ? '1 reply' : `${d.replies} replies`,
-          d.unread ? h('span', { class: 'bm-badge', title: 'Unread posts' }, `${d.unread} new`) : null),
-        h('span', { class: 'bm-muted bm-small' }, d.replies ? `last: ${d.lastBy}, ${BM.ago(d.lastTs)}` : '')));
-    a.addEventListener('click', (e) => {
-      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-      e.preventDefault();
-      const items = this.shown.map((x) => ({ id: `d${x.id}`, did: x.id, name: x.title, module: 'discussion', url: x.url }));
-      BM.viewer.open(items, `d${d.id}`);
-    });
-    return a;
+    const cls = 'bm-avatar' + (small ? ' is-small' : '');
+    // Moodle's grey default picture says nothing; use initials on a colour instead.
+    if (url && /^(\/|https:\/\/moodle\.ucl\.ac\.uk\/)/.test(url) && !/\/u\/f\d/.test(url)) return h('img', { class: cls, src: url, alt: '', loading: 'lazy' });
+    const initials = (name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+    let n = 0;
+    for (const ch of name || '') n = (n * 31 + ch.charCodeAt(0)) >>> 0;
+    return h('span', { class: cls, 'aria-hidden': 'true', style: `--c:${BM.colorFor(n)}` }, initials);
   },
 
-  // Opening a discussion marks it read in Moodle; reflect that here straight away.
-  markRead(id) {
-    const d = this.discussions.find((x) => x.id === id);
-    if (!d || !d.unread) return;
-    d.unread = 0;
-    const row = this.root.querySelector(`.bm-disc[data-id="${id}"]`);
-    row?.classList.remove('is-unread');
-    row?.querySelector('.bm-disc-replies .bm-badge')?.remove();
+  // A post's HTML from Moodle, made safe; links open in a new tab.
+  body(html) {
+    const frag = BM.safeFragment(html || '');
+    for (const a of frag.querySelectorAll('a[href]')) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+    return frag;
+  },
+
+  post(d) {
+    const h = BM.h;
+    const body = h('div', { class: 'bm-post-body' }, this.body(d.message));
+    const more = h('button', { class: 'bm-link-btn bm-post-more', hidden: true, onclick: () => {
+      const open = body.classList.toggle('is-open');
+      more.textContent = open ? 'Show less' : 'Show more';
+    } }, 'Show more');
+    const thread = h('div', { class: 'bm-thread', hidden: true });
+    const repliesBtn = h('button', { class: 'bm-post-action', 'aria-expanded': 'false', disabled: !d.replies },
+      d.replies ? (d.replies === 1 ? 'View 1 reply' : `View ${d.replies} replies`) : 'No replies yet');
+    const art = h('article', { class: 'bm-post' + (d.unread ? ' is-unread' : '') + (d.pinned ? ' is-pinned' : ''), dataset: { id: d.id } },
+      h('header', { class: 'bm-post-head' },
+        this.avatar(d.author, d.avatar),
+        h('div', { class: 'bm-post-who' },
+          h('span', { class: 'bm-post-author' }, d.author),
+          h('span', { class: 'bm-muted bm-small' },
+            this.state.forum === 'all' ? h('button', { class: 'bm-post-forum', onclick: () => this.tabsEl.querySelector(`[data-forum="${d.forumId}"]`)?.click() }, d.forumName) : null,
+            this.state.forum === 'all' ? ' · ' : null,
+            h('time', { datetime: new Date(d.created * 1000).toISOString(), title: BM.fmtTime(d.created) }, BM.ago(d.created)))),
+        h('div', { class: 'bm-spacer' }),
+        d.pinned ? h('span', { class: 'bm-tag' }, 'Pinned') : null,
+        d.locked ? h('span', { class: 'bm-tag' }, 'Locked') : null,
+        d.unread ? h('span', { class: 'bm-badge' }, `${d.unread} new`) : null),
+      h('h4', { class: 'bm-post-title' }, h('a', { href: d.url }, d.title)),
+      body, more,
+      h('footer', { class: 'bm-post-foot' },
+        repliesBtn,
+        d.replies ? h('span', { class: 'bm-muted bm-small' }, `Latest from ${d.lastBy}, ${BM.ago(d.lastTs)}`) : null,
+        h('div', { class: 'bm-spacer' }),
+        d.locked ? null : h('a', { class: 'bm-post-action', href: `/mod/forum/post.php?reply=${d.postId}` }, 'Reply'),
+        h('a', { class: 'bm-post-action', href: d.url }, 'Open in Moodle')),
+      thread);
+    repliesBtn.addEventListener('click', () => this.toggleThread(d, thread, repliesBtn, art));
+    // Only offer "Show more" when the post is actually cut off.
+    requestAnimationFrame(() => { more.hidden = body.scrollHeight <= body.clientHeight + 2; body.classList.toggle('is-clamped', !more.hidden); });
+    return art;
+  },
+
+  async toggleThread(d, thread, btn, art) {
+    const open = btn.getAttribute('aria-expanded') !== 'true';
+    btn.setAttribute('aria-expanded', String(open));
+    btn.textContent = open ? 'Hide replies' : (d.replies === 1 ? 'View 1 reply' : `View ${d.replies} replies`);
+    if (!open) { BM.slide(thread, false, () => { thread.hidden = btn.getAttribute('aria-expanded') !== 'true'; }); return; }
+    thread.hidden = false;
+    if (!thread.dataset.loaded) {
+      thread.replaceChildren(BM.h('p', { class: 'bm-muted bm-small' }, 'Loading replies…'));
+      try {
+        const posts = await BM.api.discussionPosts(d.id);
+        thread.replaceChildren(this.threadTree(posts.filter((p) => p.id !== d.postId), d));
+        thread.dataset.loaded = '1';
+      } catch (e) {
+        thread.replaceChildren(BM.h('p', { class: 'bm-muted bm-small' }, "Couldn't load replies. ", BM.h('a', { href: d.url }, 'Open in Moodle')));
+      }
+    }
+    BM.slide(thread, true);
+    // Reading the replies here counts as seen.
+    if (d.unread) { d.unread = 0; art.classList.remove('is-unread'); art.querySelector('.bm-post-head .bm-badge')?.remove(); }
+  },
+
+  // Replies nested under what they answer, three levels deep at most (deeper ones stay at level three).
+  threadTree(posts, d) {
+    const h = BM.h;
+    const kids = new Map();
+    for (const p of posts) (kids.get(p.parentId) || kids.set(p.parentId, []).get(p.parentId)).push(p);
+    const ids = new Set(posts.map((p) => p.id));
+    const roots = posts.filter((p) => p.parentId === d.postId || !ids.has(p.parentId));
+    const branch = (list, depth) => h('ol', { class: 'bm-replies' + (depth >= 2 ? ' is-flat' : '') }, list.map((p) => {
+      const children = kids.get(p.id) || [];
+      return h('li', { class: 'bm-reply' },
+        h('div', { class: 'bm-reply-head' },
+          this.avatar(p.author, p.avatar, true),
+          h('span', { class: 'bm-post-author' }, p.author),
+          h('time', { class: 'bm-muted bm-small', datetime: new Date(p.created * 1000).toISOString(), title: BM.fmtTime(p.created) }, BM.ago(p.created))),
+        h('div', { class: 'bm-reply-body' }, p.deleted ? h('p', { class: 'bm-muted' }, 'This post was deleted.') : this.body(p.message)),
+        d.locked ? null : h('a', { class: 'bm-post-action bm-small', href: `/mod/forum/post.php?reply=${p.id}` }, 'Reply'),
+        children.length ? branch(children, depth + 1) : null);
+    }));
+    return roots.length ? branch(roots, 0) : h('p', { class: 'bm-muted bm-small' }, 'No replies yet.');
   },
 };

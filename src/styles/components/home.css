@@ -143,3 +143,5 @@ html.bm .bm-fold-head::after {
 html.bm .bm-fold-head[aria-expanded="false"]::after { rotate: -90deg; }
 html.bm .bm-news-panel:has(.bm-fold-head[aria-expanded="false"]) .bm-panel-head { margin-bottom: 0; }
 html.bm .bm-feedback-panel p { margin: 0 0 14px; }
+html.bm .bm-feedback-forums { margin-top: 18px; padding-top: 16px; border-top: var(--bm-border) solid var(--bm-line); }
+html.bm .bm-feedback-forums p { margin: 0 0 14px; }

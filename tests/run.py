@@ -95,17 +95,30 @@ FORUMS = [{'id': 9, 'cmid': 3009, 'course': 101, 'type': 'news', 'name': 'Announ
           {'id': 10, 'cmid': 2004, 'course': 101, 'type': 'general', 'name': 'Q&amp;A forum', 'unreadpostscount': 3},
           {'id': 11, 'cmid': 3011, 'course': 102, 'type': 'news', 'name': 'Announcements'}]
 
-def disc(did, name, who, uid, created, last, replies=0, unread=0, pinned=False, lastby=None):
-    return {'discussion': did, 'name': name, 'userfullname': who, 'userid': uid, 'created': NOW - created,
+def disc(did, name, who, uid, created, last, replies=0, unread=0, pinned=False, lastby=None, message=None):
+    return {'discussion': did, 'id': did * 10, 'name': name, 'userfullname': who, 'userid': uid, 'created': NOW - created,
             'timemodified': NOW - last, 'usermodifiedfullname': lastby or who, 'numreplies': replies,
-            'numunread': unread, 'pinned': pinned, 'locked': False, 'message': f'<p>About {name}</p>'}
+            'numunread': unread, 'pinned': pinned, 'locked': False,
+            'userpictureurl': '/theme/image.php/ucl/core/1/u/f2',
+            'message': message or f'<p>About {name}</p>'}
+
+# Replies in discussion 202: two answers to the opening post, one reply to a reply.
+def post(pid, parent, who, ago, text):
+    return {'id': pid, 'parentid': parent, 'author': {'fullname': who, 'urls': {'profileimage': ''}},
+            'timecreated': NOW - ago, 'message': f'<p>{text}</p>', 'isdeleted': False}
+
+POSTS = {202: [post(2020, 0, 'Sam Student', 3 * 3600, 'My solver segfaults.'),
+               post(2021, 2020, 'TA Priya', 2 * 3600, 'Check your bounds.'),
+               post(2022, 2021, 'Sam Student', 3600, 'That was it, thanks!'),
+               post(2023, 2020, 'Alex Peer', 1800, 'Same here, see <a href="https://example.org/gdb">this gdb guide</a>.')]}
 
 DISCUSSIONS = {
     9: [{'discussion': 55, 'name': 'Week one announcement', 'userfullname': 'Course team', 'timemodified': NOW - 7200}],
     11: [{'discussion': 77, 'name': 'Problem class moved', 'userfullname': 'Lecturer', 'timemodified': NOW - 600}],
     10: [
         disc(201, 'Coursework FAQ (read first)', 'Course team', 50, 20 * 86400, 20 * 86400, pinned=True),
-        disc(202, 'Segfault in the maze solver', 'Sam Student', 51, 3 * 3600, 1800, replies=4, unread=2, lastby='TA Priya'),
+        disc(202, 'Segfault in the maze solver', 'Sam Student', 51, 3 * 3600, 1800, replies=3, unread=2, lastby='Alex Peer',
+             message='<p>My solver segfaults on the big maze. Log: <a href="https://example.org/log">crash log</a></p>' + '<p>More detail.</p>' * 12),
         disc(203, 'Is recursion allowed in Q3?', 'Me Myself', 7, 2 * 86400, 26 * 3600, replies=1, lastby='Lecturer'),
         disc(204, 'Lab room change', 'Lecturer', 52, 12 * 86400, 12 * 86400, unread=1),
     ],
@@ -125,6 +138,8 @@ def web_service(method, args):
         return course_state(args['courseid'])
     if method == 'mod_forum_get_forums_by_courses':
         return [f for f in FORUMS if f['course'] in args['courseids']]
+    if method == 'mod_forum_get_discussion_posts':
+        return {'posts': POSTS.get(args['discussionid'], [])}
     if method == 'mod_forum_get_forum_discussions':
         return {'discussions': DISCUSSIONS.get(args['forumid'], [])}
     raise KeyError(method)
@@ -156,7 +171,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self.send((ROOT / 'tests' / 'fixture.html').read_text(encoding='utf-8'))
         if url.path == '/course/section.php':
             return self.send(section_page(urllib.parse.parse_qs(url.query).get('id', [''])[0]))
-        if url.path == '/mod/forum/view.php':
+        if url.path in ('/mod/forum/view.php', '/mod/forum/index.php'):
             return self.send((ROOT / 'tests' / 'fixture.html').read_text(encoding='utf-8'))
         if url.path.startswith('/mod/'):
             return self.send('<!doctype html><body id="destination">Moodle activity page</body>')

@@ -51,7 +51,7 @@ if (flags.get('forumapi') === 'fail') {
 <script>var M = {}; M.cfg = {"wwwroot":"","sesskey":"sk123","userId":7,"courseId":101};</script>
 </head>
 <body>
-<nav id="ucl-navbar"><a href="/my/">UCL Moodle</a></nav>
+<nav id="ucl-navbar"><a href="/my/">UCL Moodle</a> <a href="/my/courses.php">My courses</a> <a href="/local/ucl_tracker/index.php">Feedback tracker</a></nav>
 <div id="page-wrapper"><div id="page"><div id="topofscroll">
   <div id="page-content"></div>
 </div></div></div>
@@ -68,8 +68,8 @@ if (location.pathname.startsWith('/my/')) {
     </ul></section>
     <section data-block="recent_activity"><a href="/mod/forum/discuss.php?d=55">Week one announcement</a></section>
     <p id="stock">Stock dashboard</p>`;
-} else if (location.pathname === '/mod/forum/view.php') {
-  document.body.id = 'page-mod-forum-view';
+} else if (location.pathname.startsWith('/mod/forum/')) {
+  document.body.id = location.pathname.endsWith('index.php') ? 'page-mod-forum-index' : 'page-mod-forum-view';
   document.body.classList.add('course-101');
   content.innerHTML = '<p id="stock">Stock forum page</p>';
 } else {

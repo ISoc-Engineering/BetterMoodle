@@ -85,7 +85,10 @@ BM.api = {
       const author = BM.text(x.userfullname || '');
       return {
         id: Number(x.discussion),
+        postId: Number(x.id), // the opening post (what "Reply" answers)
         title,
+        message: x.message || '',
+        avatar: x.userpictureurl || '',
         author,
         authorId: Number(x.userid),
         created: x.created || x.timemodified,
@@ -99,6 +102,20 @@ BM.api = {
         search: `${title} ${author} ${BM.text(x.message || '')}`.toLowerCase(),
       };
     });
+  },
+
+  // Every post in a discussion, oldest first. The opening post is included (parentId 0).
+  async discussionPosts(discussionid) {
+    const d = await this.call('mod_forum_get_discussion_posts', { discussionid, sortby: 'created', sortdirection: 'ASC' });
+    return (d.posts || []).map((p) => ({
+      id: Number(p.id),
+      parentId: Number(p.parentid) || 0,
+      author: BM.text(p.author?.fullname || ''),
+      avatar: p.author?.urls?.profileimage || '',
+      created: p.timecreated,
+      message: p.message || '',
+      deleted: !!p.isdeleted,
+    }));
   },
 
   mapEvent(e) {

@@ -104,8 +104,11 @@
         await until(() => !$('#bm-news-body').hidden, 'Announcements to open again');
         await until(() => !$('.bm-news-panel .bm-link-btn').hidden, 'All forums link');
         expect($('.bm-news-panel .bm-link-btn').getAttribute('href') === '/mod/forum/view.php?id=3011', 'All forums opens the forum page (newest announcement first)');
-        const fb = $('.bm-feedback-panel a');
-        expect(fb && fb.getAttribute('href') === '/report/myfeedback/index.php', 'Feedback opens the feedback tracker');
+        const fb = $('.bm-feedback-panel a.bm-btn-primary');
+        expect(fb && fb.getAttribute('href') === '/local/ucl_tracker/index.php', `Feedback opens the same page as the top bar's Feedback tracker, got ${fb && fb.getAttribute('href')}`);
+        await until(() => !$('.bm-feedback-forums .bm-btn').hidden, 'Open forums button');
+        const firstCourse = $('.bm-course').getAttribute('href').split('id=')[1];
+        expect($('.bm-feedback-forums .bm-btn').getAttribute('href') === `/mod/forum/index.php?id=${firstCourse}`, 'Open forums goes to the most recently used course');
         expect(fb.closest('.bm-home-side') === $('.bm-news-panel').closest('.bm-home-side') &&
           ($('.bm-news-panel').compareDocumentPosition($('.bm-feedback-panel')) & Node.DOCUMENT_POSITION_FOLLOWING), 'Feedback sits below Announcements');
       });
@@ -259,43 +262,67 @@
     },
 
     async forum(check) {
-      await check('forum page replaces the stock one, with a rail of forums by course', async () => {
-        await until(() => $$('.bm-disc').length === 4, '4 discussions');
+      const titles = () => texts('.bm-post-title');
+      await check('a forum opens as a course feed: rail of courses, forum tabs, this forum selected', async () => {
+        await until(() => $$('.bm-post').length === 4, '4 posts');
         expect($('#page-content').classList.contains('bm-replaced'), 'stock forum page hidden');
-        expect($('.bm-forum-title').textContent === 'Q&A forum.', `title, got ${$('.bm-forum-title').textContent}`);
-        const current = $('.bm-rail-forum[aria-current="page"]');
-        expect(current && current.textContent.startsWith('Q&A forum') && current.closest('details').open, 'this forum highlighted, its course open');
-        expect($$('.bm-rail-course').length === 2, 'both courses with forums listed');
-        expect($('.bm-rail-course:not([open])'), 'other courses folded');
+        expect($('.bm-forum-title').textContent === 'Principles of Programming.', `course title, got ${$('.bm-forum-title').textContent}`);
+        expect($('.bm-rail-course[aria-current="page"]')?.textContent.includes('Principles of Programming'), 'this course highlighted in the rail');
+        expect(texts('.bm-forum-tabs .bm-chip').map((t) => t.replace(/\d+$/, '')).join('|') === 'All forums|Announcements|Q&A forum', 'tabs: All, then each forum');
+        expect($('.bm-forum-tabs [aria-selected="true"]').textContent.startsWith('Q&A forum'), 'opened forum is the selected tab');
       });
-      await check('discussions grouped: Pinned, Today, Yesterday, This month', async () => {
-        expect(texts('.bm-disc-group .bm-h3').join('|') === 'Pinned|Today|Yesterday|This month', `got ${texts('.bm-disc-group .bm-h3').join('|')}`);
-        expect($$('.bm-disc.is-unread').length === 2, 'two discussions have unread posts');
-        expect($('.bm-forum-titles').textContent.includes('4 discussions, 2 unread'), 'count line');
+      await check('posts read like a feed: author, time, title, the post with working links', async () => {
+        const seg = $$('.bm-post').find((p) => p.textContent.includes('Segfault'));
+        expect(seg.querySelector('.bm-post-author').textContent === 'Sam Student', 'author');
+        expect(seg.querySelector('.bm-avatar').textContent === 'SS', 'default photo becomes initials');
+        const link = seg.querySelector('.bm-post-body a');
+        expect(link && link.href === 'https://example.org/log' && link.target === '_blank' && link.rel.includes('noopener'), 'links in posts work and open safely in a new tab');
+        expect(!seg.querySelector('.bm-post-more').hidden, 'a long post offers Show more');
+        seg.querySelector('.bm-post-more').click();
+        expect(seg.querySelector('.bm-post-body').classList.contains('is-open'), 'Show more expands it');
+        expect(seg.querySelector('a.bm-post-action[href="/mod/forum/post.php?reply=2020"]'), 'Reply answers the opening post');
+        expect(titles()[0] === 'Coursework FAQ (read first)' && $('.bm-feed > .bm-h3').textContent === 'Pinned', 'pinned first');
       });
-      await check('filters, search and sort', async () => {
-        const titles = () => texts('.bm-disc-title').map((t) => t.replace(/(Pinned|Locked)$/, ''));
-        $('.bm-chip[data-chip="unread"]').click();
-        expect(titles().sort().join('|') === 'Lab room change|Segfault in the maze solver', `unread: ${titles().join('|')}`);
-        $('.bm-chip[data-chip="mine"]').click();
+      await check('replies open right under the post, threaded', async () => {
+        const seg = $$('.bm-post').find((p) => p.textContent.includes('Segfault'));
+        const btn = [...seg.querySelectorAll('.bm-post-action')].find((b) => b.textContent === 'View 3 replies');
+        btn.click();
+        await until(() => seg.querySelectorAll('.bm-reply').length === 3, '3 replies');
+        const top = [...seg.querySelectorAll('.bm-thread > .bm-replies > .bm-reply')].map((r) => r.querySelector('.bm-post-author').textContent);
+        expect(top.join('|') === 'TA Priya|Alex Peer', `direct answers, got ${top.join('|')}`);
+        const nested = seg.querySelector('.bm-reply .bm-replies .bm-post-author');
+        expect(nested && nested.textContent === 'Sam Student', 'reply-to-a-reply nests under it');
+        expect(seg.querySelector('.bm-reply-body a[href="https://example.org/gdb"]'), 'links in replies work');
+        expect(!seg.classList.contains('is-unread'), 'reading the replies clears "new"');
+        expect(btn.textContent === 'Hide replies', 'button flips to Hide replies');
+      });
+      await check('show, search and sort', async () => {
+        const set = (i, v) => { const s = $$('#bm-forum .bm-select')[i]; s.value = v; s.dispatchEvent(new Event('change')); };
+        set(0, 'mine');
         expect(titles().join('|') === 'Is recursion allowed in Q3?', 'started by me');
-        $('.bm-chip[data-chip="all"]').click();
+        set(0, 'all');
         const input = $('#bm-forum .bm-input');
         input.value = 'maze'; input.dispatchEvent(new Event('input'));
         expect(titles().join('|') === 'Segfault in the maze solver', 'search');
         input.value = ''; input.dispatchEvent(new Event('input'));
-        const sel = $('#bm-forum .bm-select');
-        sel.value = 'replies'; sel.dispatchEvent(new Event('change'));
-        expect(titles()[0] === 'Segfault in the maze solver' && !$('.bm-disc-group .bm-h3'), 'most replies first, no time groups');
-        sel.value = 'activity'; sel.dispatchEvent(new Event('change'));
+        set(1, 'replies');
+        expect(titles()[0] === 'Segfault in the maze solver' && !$('.bm-feed > .bm-h3'), 'most replies first, no Pinned heading');
+        set(1, 'activity');
       });
-      await check('a discussion opens in the side viewer and is marked read', async () => {
-        const row = $$('.bm-disc').find((r) => r.textContent.includes('Segfault'));
-        row.click();
-        await until(() => html.classList.contains('bm-viewer-open'), 'viewer');
-        expect($('.bm-viewer iframe').getAttribute('src') === '/mod/forum/discuss.php?d=202', 'shows the discussion');
-        expect(!row.classList.contains('is-unread'), 'marked read');
-        BM.viewer.close();
+      await check('All forums merges every forum; a post names its forum', async () => {
+        $('.bm-forum-tabs [data-forum="all"]').click();
+        await until(() => $$('.bm-post').length === 5, '4 Q&A posts + 1 announcement');
+        expect(location.pathname === '/mod/forum/index.php', 'address follows the tab');
+        expect($('.bm-post-forum'), 'each post says which forum it is in');
+      });
+    },
+
+    async forumCourse(check) {
+      await check('course forum index opens the same feed, All forums selected', async () => {
+        await until(() => $$('.bm-post').length === 5, '5 posts');
+        expect($('.bm-forum-tabs [aria-selected="true"]').dataset.forum === 'all', 'All forums selected');
+        const np = $('.bm-forum-head .bm-btn-primary');
+        expect(!np.hidden && np.getAttribute('href') === '/mod/forum/post.php?forum=10' && np.textContent === 'New post in Q&A forum', 'New post goes to a forum students can post in');
       });
     },
 

@@ -30,7 +30,7 @@ var BM = globalThis.BM;
     BM.palette.init();
     if (id === 'page-my-index') await BM.home.init();
     else if (/^page-course-view-/.test(id)) await BM.course.init(BM.courseIdFromBody());
-    else if (id === 'page-mod-forum-view') await BM.forum.init();
+    else if (id === 'page-mod-forum-view' || id === 'page-mod-forum-index') await BM.forum.init();
   } catch (e) {
     console.warn('[BetterMoodle] feature failed; leaving the stock page alone', e);
   }
