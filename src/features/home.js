@@ -1,4 +1,4 @@
-// Dashboard (/my/): a sideways-scrolling strip of Courses across the top (cover images where the theme
+// Dashboard (/my/): a headline with what's due and a live countdown to the next deadline, then a sideways-scrolling strip of Courses (cover images where the theme
 // shows them), then Due soon grouped by when, and the latest Announcements from every current course.
 // The stock dashboard sits behind a toggle.
 var BM = globalThis.BM;
@@ -21,8 +21,10 @@ BM.home = {
     this.prevBtn = h('button', { class: 'bm-strip-btn', 'aria-label': 'Scroll courses left', onclick: () => this.scrollCourses(-1) }, '‹');
     this.nextBtn = h('button', { class: 'bm-strip-btn', 'aria-label': 'Scroll courses right', onclick: () => this.scrollCourses(1) }, '›');
     this.newsEl = h('div', { class: 'bm-news' }, h('p', { class: 'bm-muted' }, 'Loading announcements…'));
+    this.heroEl = h('section', { class: 'bm-hero', 'aria-label': 'Summary', hidden: true });
     const toggle = h('button', { class: 'bm-link-btn' });
     const body = h('div', { class: 'bm-home-body' },
+      this.heroEl,
       h('section', { class: 'bm-panel bm-courses', 'aria-labelledby': 'bm-h-courses' },
         h('div', { class: 'bm-courses-head' },
           h('h2', { class: 'bm-h2', id: 'bm-h-courses' }, 'Courses'), h('div', { class: 'bm-spacer' }), this.prevBtn, this.nextBtn),
@@ -67,6 +69,7 @@ BM.home = {
 
   renderDue(events) {
     const h = BM.h;
+    this.renderHero(events);
     if (!events.length) { this.dueEl.replaceChildren(h('p', { class: 'bm-muted' }, 'Nothing due. 🎉')); return; }
     const first = !this.dueEl.querySelector('.bm-due-group');
     const groups = new Map(BM.BUCKETS.map((b) => [b, []]));
@@ -103,6 +106,43 @@ BM.home = {
     }));
     if (first) BM.enter(this.coursesEl.querySelectorAll('.bm-course'));
     this.updateArrows();
+  },
+
+  // The big headline: how much is due this week, then the next deadline with a ticking countdown.
+  // Pop! animates it in once (lines wipe in, a glow sweeps behind); other themes show it plainly.
+  renderHero(events) {
+    const h = BM.h;
+    const now = BM.now();
+    const upcoming = events.filter((e) => e.ts >= now).sort((a, b) => a.ts - b.ts);
+    const overdue = events.length - upcoming.length;
+    const week = upcoming.filter((e) => e.ts - now < 7 * 86400).length;
+    const next = upcoming[0];
+    const line = (text, i, cls = '') => h('span', { class: 'bm-hero-line ' + cls, style: `--i:${i}` }, text, h('span', { class: 'bm-hero-dot' }, '.'));
+
+    const lines = [line(week ? `${week} due this week` : 'Nothing due this week', 0)];
+    if (overdue) lines.push(line(`${overdue} overdue`, 1, 'is-overdue'));
+
+    clearInterval(this.tick);
+    let meta = null;
+    if (next) {
+      this.countEl = h('span', { class: 'bm-hero-count bm-mono', 'aria-label': 'Time left' });
+      const soon = next.ts - now < 86400;
+      meta = h('a', { class: 'bm-hero-next' + (soon ? ' is-soon' : ''), href: next.url },
+        h('span', { class: 'bm-ping', 'aria-hidden': 'true' }),
+        h('span', { class: 'bm-hero-next-text' },
+          h('span', { class: 'bm-hero-next-label' }, 'Next up'),
+          h('span', { class: 'bm-hero-next-name' }, next.name),
+          h('span', { class: 'bm-muted bm-small' }, this.shortCourse(next.courseName))),
+        this.countEl);
+      const update = () => { this.countEl.textContent = BM.clock(next.ts - BM.now()); };
+      update();
+      this.tick = setInterval(update, 1000);
+    }
+
+    const first = this.heroEl.hidden;
+    this.heroEl.replaceChildren(h('h1', { class: 'bm-hero-title' }, lines), meta);
+    this.heroEl.hidden = false;
+    if (!first) this.heroEl.classList.add('is-settled'); // re-renders (fresh data after cache) don't replay the entrance
   },
 
   // The arrows move the course strip by about one screenful; they grey out at either end.

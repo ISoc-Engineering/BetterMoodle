@@ -44,6 +44,16 @@
         expect(imgs.length === 1, `only the safe data: image should be kept, got ${imgs.length}`);
         expect(css(imgs[0], 'display') === 'block', 'Pop! should show course images');
       });
+      await check('hero: what is due, the next deadline and a ticking countdown', async () => {
+        await until(() => $('.bm-hero:not([hidden]) .bm-hero-count'), 'hero');
+        const lines = texts('.bm-hero-line');
+        expect(lines.join('|') === '1 due this week.|1 overdue.', `headline should be "1 due this week. 1 overdue.", got ${lines.join(' ')}`);
+        expect($('.bm-hero-next-name').textContent === 'Haskell sheet 1', 'next up should be Haskell sheet 1');
+        expect(!$('.bm-hero-next').classList.contains('is-soon'), 'due in 26h is not "soon" (under a day)');
+        const before = $('.bm-hero-count').textContent;
+        expect(/^1d \d\d:\d\d:\d\d$/.test(before), `countdown should look like 1d 01:59:59, got ${before}`);
+        await until(() => $('.bm-hero-count').textContent !== before, 'countdown to tick');
+      });
       await check('courses sit in one sideways-scrolling row above the deadlines', async () => {
         await until(() => !$('.bm-course.bm-enter'), 'Pop! entrance animation to finish');
         const strip = $('.bm-course-strip');
@@ -136,6 +146,10 @@
         await until(() => $$('.bm-section').length === 3, '3 sections');
         expect(texts('.bm-section-title').join('|') === 'General|Week 1|Week 2', 'section order');
         expect($$('.bm-section').every((s) => s.style.getPropertyValue('--c')), 'each section gets a colour (--c)');
+      });
+      await check('sections rise into view and end fully visible', async () => {
+        await until(() => !$('.bm-reveal'), 'reveal to finish');
+        expect($$('.bm-section').every((sec) => css(sec, 'opacity') === '1'), 'every section should end at full opacity');
       });
       await check('Slides chip shows only lecture slides', async () => {
         $('.bm-chip[data-chip="slides"]').click();

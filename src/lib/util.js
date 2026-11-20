@@ -75,6 +75,14 @@ BM.ago = (ts) => {
   return new Date(ts * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 };
 
+// A ticking countdown: "2d 04:13:09", or "04:13:09" under a day. Seconds in, never negative.
+BM.clock = (secs) => {
+  const t = Math.max(0, Math.floor(secs));
+  const d = Math.floor(t / 86400);
+  const hms = [Math.floor(t / 3600) % 24, Math.floor(t / 60) % 60, t % 60].map((n) => String(n).padStart(2, '0')).join(':');
+  return d ? `${d}d ${hms}` : hms;
+};
+
 BM.fmtTime = (ts) =>
   new Date(ts * 1000).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
@@ -120,6 +128,25 @@ BM.enter = (els) => {
     el.style.animationDelay = `${Math.min(i, 12) * 70}ms`;
     el.addEventListener('animationend', () => { el.classList.remove('bm-enter'); el.style.animationDelay = ''; }, { once: true });
   });
+};
+
+// Reveal on scroll: each element fades up as it comes into view (with a short stagger for ones that
+// arrive together), then the helper classes are removed so hover transitions aren't delayed.
+// CSS decides whether .bm-reveal animates (only Pop! does); in other themes it's a no-op.
+BM.reveal = (els) => {
+  if (typeof IntersectionObserver !== 'function') return;
+  const io = new IntersectionObserver((entries) => {
+    let i = 0;
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      const el = e.target;
+      io.unobserve(el);
+      el.style.setProperty('--d', `${Math.min(i++, 6) * 80}ms`);
+      el.classList.add('is-in');
+      setTimeout(() => { el.classList.remove('bm-reveal', 'is-in'); el.style.removeProperty('--d'); }, 1400);
+    }
+  }, { rootMargin: '0px 0px -6% 0px' });
+  for (const el of els) { el.classList.add('bm-reveal'); io.observe(el); }
 };
 
 BM.isTyping = (e) => {

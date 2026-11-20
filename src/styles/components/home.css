@@ -67,3 +67,34 @@ html.bm .bm-news-list li + li { border-top: var(--bm-border) solid var(--bm-line
 html.bm .bm-news-item { display: flex; flex-direction: column; padding: 9px 0; color: var(--bm-text); text-decoration: none; }
 html.bm .bm-news-item:hover { text-decoration: none; color: var(--bm-accent); }
 html.bm .bm-news-title { font-weight: var(--bm-weight-strong); overflow-wrap: anywhere; }
+
+/* ---- Hero: what's due this week, and the next deadline ticking down ---- */
+html.bm .bm-hero { position: relative; display: grid; gap: 16px; justify-items: start; padding: 4px 0; }
+html.bm .bm-hero[hidden] { display: none; }
+html.bm .bm-hero-title {
+  display: flex; flex-direction: column; margin: 0;
+  font: var(--bm-weight-head) clamp(1.8rem, 4vw, 2.6rem) / 1.05 var(--bm-font-display);
+  letter-spacing: -.02em; text-transform: var(--bm-case-head);
+}
+html.bm .bm-hero-line.is-overdue { color: var(--bm-danger); }
+html.bm .bm-hero-dot { color: var(--bm-accent); }
+html.bm .bm-hero-next {
+  display: flex; align-items: center; gap: 14px; width: min(100%, 620px); padding: 12px 16px;
+  color: var(--bm-text); text-decoration: none; background: var(--bm-surface);
+  border: var(--bm-border) solid var(--bm-line); border-radius: var(--bm-radius); box-shadow: var(--bm-shadow);
+}
+html.bm .bm-hero-next:hover { color: var(--bm-text); text-decoration: none; background: var(--bm-bg-soft); }
+html.bm .bm-hero-next-text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+html.bm .bm-hero-next-label { font: var(--bm-weight-head) .75rem var(--bm-font-mono); color: var(--bm-muted); }
+html.bm .bm-hero-next-name { font-weight: var(--bm-weight-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.bm .bm-hero-count { flex: none; font-size: 1.35rem; font-weight: var(--bm-weight-head); }
+
+/* Live dot: pings while the countdown runs; red when the deadline is under a day away. */
+html.bm .bm-ping { position: relative; flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--bm-accent); }
+html.bm .bm-hero-next.is-soon .bm-ping { background: var(--bm-danger); }
+html.bm .bm-ping::after {
+  content: ""; position: absolute; inset: 0; border-radius: 50%; background: inherit;
+  animation: bm-ping 1.6s cubic-bezier(0, 0, .2, 1) infinite;
+}
+@keyframes bm-ping { 75%, 100% { transform: scale(2.6); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { html.bm .bm-ping::after { display: none; } }

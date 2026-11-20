@@ -127,7 +127,7 @@ BM.course = {
       if (open.has(s.id)) sec.classList.add('is-collapsed');
       return sec;
     }));
-    if (firstPaint) BM.enter(this.listEl.children);
+    if (firstPaint) BM.reveal(this.listEl.children);
     this.applyFilter();
     if (BM.viewer.isOpen()) BM.viewer.refresh(this.viewables());
   },

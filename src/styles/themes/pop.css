@@ -170,6 +170,45 @@ html.bm[data-bm-theme="pop"] .bm-p-item.is-sel { border-color: var(--ink); }
 /* Entrances: rows pop in once with a 70ms stagger (JS adds .bm-enter + animation-delay). */
 html.bm[data-bm-theme="pop"] .bm-enter { animation: bm-pop .5s var(--bm-ease) backwards; }
 
+/* Dashboard hero, the one big moment: the headline wipes in line by line, a sun-and-pink glow
+ * sweeps in behind it, then the next-deadline card pops up. Plays once per page load. */
+html.bm[data-bm-theme="pop"] .bm-hero { padding: 18px 0 6px; isolation: isolate; }
+html.bm[data-bm-theme="pop"] .bm-hero::before {
+  content: ""; position: absolute; z-index: -1; left: -4%; top: -8%; width: min(820px, 85vw); height: 125%;
+  background: radial-gradient(closest-side, rgba(255,210,63,.75), rgba(255,92,138,.32) 60%, transparent);
+  filter: blur(28px); pointer-events: none;
+  animation: bm-spotlight 1.8s .45s cubic-bezier(.2, .7, .2, 1) backwards;
+}
+html.bm[data-bm-theme="pop"] .bm-hero-title {
+  font: 900 clamp(2.4rem, 6.5vw, 4.6rem) / .92 var(--bm-font-display); letter-spacing: -.04em; text-shadow: 4px 4px 0 #fff;
+}
+html.bm[data-bm-theme="pop"] .bm-hero-line { animation: bm-wipe .8s calc(var(--i) * .35s + .1s) cubic-bezier(.65, 0, .35, 1) backwards; }
+html.bm[data-bm-theme="pop"] .bm-hero-line.is-overdue { color: var(--red); }
+html.bm[data-bm-theme="pop"] .bm-hero-dot { color: var(--hot); }
+html.bm[data-bm-theme="pop"] .bm-hero-next {
+  border: 4px solid var(--ink); border-left: 14px solid var(--sky); border-radius: 14px; background: #fff;
+  box-shadow: 6px 6px 0 var(--ink); transition: translate .15s var(--bm-ease), box-shadow .15s;
+  animation: bm-pop .5s 1s var(--bm-ease) backwards;
+}
+html.bm[data-bm-theme="pop"] .bm-hero-next.is-soon { border-left-color: var(--hot); }
+html.bm[data-bm-theme="pop"] .bm-hero-next:hover { background: #fff; translate: -2px -2px; box-shadow: 9px 9px 0 var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-hero-next-label { color: var(--ink); text-transform: uppercase; letter-spacing: .08em; }
+html.bm[data-bm-theme="pop"] .bm-hero-next-name { font: 900 1.15rem var(--bm-font-display); text-transform: uppercase; }
+html.bm[data-bm-theme="pop"] .bm-hero-count {
+  font-weight: 800; font-size: 1.5rem; background: var(--sun); border: 3px solid var(--ink); border-radius: 10px; padding: 4px 10px;
+}
+html.bm[data-bm-theme="pop"] .bm-ping { width: 14px; height: 14px; background: var(--sky); border: 2px solid var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-hero-next.is-soon .bm-ping { background: var(--hot); }
+html.bm[data-bm-theme="pop"] .bm-hero.is-settled :is(.bm-hero-line, .bm-hero-next),
+html.bm[data-bm-theme="pop"] .bm-hero.is-settled::before { animation: none; }
+
+/* Course sections rise into place as you scroll to them (JS: BM.reveal adds .bm-reveal, then .is-in). */
+html.bm[data-bm-theme="pop"] .bm-reveal { opacity: 0; translate: 0 32px; rotate: -1deg; }
+html.bm[data-bm-theme="pop"] .bm-reveal.is-in {
+  opacity: 1; translate: none; rotate: none;
+  transition: opacity .4s ease var(--d, 0s), translate .65s var(--bm-ease) var(--d, 0s), rotate .65s var(--bm-ease) var(--d, 0s);
+}
+
 /* Cursor ring (created by src/features/cursor.js only for a fine pointer and no reduced motion). */
 html.bm[data-bm-theme="pop"] .bm-cursor { position: fixed; top: 0; left: 0; z-index: 99999; width: 40px; height: 40px; pointer-events: none; opacity: 0; transition: opacity .2s; }
 html.bm[data-bm-theme="pop"] .bm-cursor::before {
@@ -182,6 +221,8 @@ html.bm[data-bm-theme="pop"] .bm-cursor.is-down::before { transform: scale(.7); 
 html.bm:not([data-bm-theme="pop"]) .bm-cursor { display: none; }
 
 @keyframes bm-pop { from { opacity: 0; transform: translateY(24px) rotate(-2deg) scale(.95); } to { opacity: 1; transform: none; } }
+@keyframes bm-wipe { from { clip-path: inset(-12px 100% -12px -12px); } to { clip-path: inset(-12px -12px -12px -12px); } }
+@keyframes bm-spotlight { from { opacity: 0; transform: translate(-24%, -20%) scale(.5); } }
 @keyframes bm-drop { from { opacity: 0; transform: translateY(-14px) scale(.97); } }
 @keyframes bm-shake { 0%, 84%, 100% { transform: none; } 88% { transform: translateX(-3px) rotate(-3deg); } 92% { transform: translateX(3px) rotate(3deg); } 96% { transform: translateX(-2px); } }
 
@@ -197,4 +238,5 @@ html.bm:not([data-bm-theme="pop"]) .bm-cursor { display: none; }
     animation: none !important; transition: none !important;
   }
   html.bm[data-bm-theme="pop"] .bm-cursor { display: none; }
+  html.bm[data-bm-theme="pop"] .bm-reveal { opacity: 1; translate: none; rotate: none; }
 }
