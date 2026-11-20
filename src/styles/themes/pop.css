@@ -273,7 +273,7 @@ html.bm[data-bm-theme="pop"] .bm-reveal.is-in {
   transition: opacity .4s ease var(--d, 0s), translate .65s var(--bm-ease) var(--d, 0s), rotate .65s var(--bm-ease) var(--d, 0s);
 }
 
-/* Cursor (src/features/cursor.js): a 30px ring on the pointer with a dot marking the exact point.
+/* Cursor (src/features/cursor.js): a 30px ring centred on the pointer.
  * The system pointer is hidden only while ours is showing (html.bm-cursor-on), and never over text
  * fields, so typing still gets the normal text cursor. */
 html.bm-cursor-on, html.bm-cursor-on * { cursor: none !important; }
@@ -285,10 +285,6 @@ html.bm[data-bm-theme="pop"] .bm-cursor {
 html.bm[data-bm-theme="pop"] .bm-cursor::before {
   content: ""; display: block; width: 100%; height: 100%; box-sizing: border-box; border: 2.5px solid var(--ink); border-radius: 50%;
   background: rgba(255,210,63,0); transition: transform .2s var(--bm-ease), background .2s;
-}
-html.bm[data-bm-theme="pop"] .bm-cursor::after { /* the exact point */
-  content: ""; position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px;
-  border-radius: 50%; background: var(--ink); box-shadow: 0 0 0 1.5px #fff;
 }
 html.bm[data-bm-theme="pop"] .bm-cursor.is-on { opacity: 1; }
 html.bm[data-bm-theme="pop"] .bm-cursor.is-hot::before { transform: scale(1.5); background: rgba(255,210,63,.5); }

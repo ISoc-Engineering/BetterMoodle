@@ -1,5 +1,5 @@
-// Pop! theme cursor: a ring that sits exactly on the pointer (no lag), with a small dot in the middle
-// marking the exact point, so the system pointer can be hidden. The ring grows and fills over anything
+// Pop! theme cursor: a ring centred exactly on the pointer (no lag), replacing the system pointer.
+// The ring grows and fills over anything
 // clickable and shrinks while pressed. Over text fields, and inside the viewer (an iframe, where the
 // page can't see the mouse), it steps aside and the normal pointer shows.
 // Only for a fine pointer (mouse/trackpad) with motion allowed; otherwise the system pointer is untouched.
