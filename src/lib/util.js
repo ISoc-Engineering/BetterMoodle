@@ -182,14 +182,14 @@ BM.burst = (from) => {
   setTimeout(() => wrap.remove(), 800);
 };
 
-// One toast at a time, bottom centre, with an optional action button (e.g. Undo). Gone after 5s.
-BM.toast = (message, actionLabel, onAction) => {
+// One toast at a time, bottom centre, with an optional action button (e.g. Undo). Gone after ms.
+BM.toast = (message, actionLabel, onAction, ms = 5000) => {
   document.querySelector('.bm-toast')?.remove();
   const h = BM.h;
   const t = h('div', { class: 'bm-toast bm-root', role: 'status' }, h('span', {}, message),
     actionLabel ? h('button', { class: 'bm-toast-btn', onclick: () => { t.remove(); onAction(); } }, actionLabel) : null);
   document.body.append(t);
-  setTimeout(() => t.remove(), 5000);
+  setTimeout(() => t.remove(), ms);
 };
 
 BM.isTyping = (e) => {

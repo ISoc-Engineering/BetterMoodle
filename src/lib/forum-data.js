@@ -23,7 +23,7 @@ BM.forumData = {
 
   // Forums in a course, from the course state. Announcements forums are spotted by name.
   async forums(courseId) {
-    const st = await BM.api.courseState(courseId);
+    const st = await BM.courseInfo.state(courseId);
     const sections = new Map((st.section || []).map((s) => [String(s.id), s]));
     return (st.cm || [])
       .filter((c) => c.module === 'forum' && c.uservisible !== false && sections.get(String(c.sectionid))?.visible !== false)
@@ -69,9 +69,10 @@ BM.forumData = {
       if (!link) continue;
       const id = Number(row.dataset.discussionid) || Number(new URL(link.getAttribute('href'), location.origin).searchParams.get('d'));
       const author = this.first(row, ['[data-region="author-name"]', '.author-info .text-truncate', '.author .text-truncate', 'td.author a[href*="/user/view.php"]', 'td.author']);
-      const replyCell = row.querySelector('[data-region="replies"], td.replies, .replies') ||
-        [...row.querySelectorAll('td')].find((td) => /repl/i.test(td.textContent) || /^\s*\d+\s*$/.test(td.textContent));
       const unreadEl = this.first(row, ['[data-region="unread-count"]', 'a[href*="#unread"]', 'td.unread a']);
+      // The replies cell: marked up as such, or the one holding the unread badge, or a cell that's just a number.
+      const replyCell = this.first(row, ['[data-region="replies"]', 'td.replies', '.replies']) || unreadEl?.closest('td') ||
+        [...row.querySelectorAll('td')].find((td) => /repl/i.test(td.textContent) || /^\s*\d+\s*$/.test(td.textContent));
       const last = this.first(row, ['[data-region="last-post"]', 'td.lastpost', '.lastpost']) || [...row.querySelectorAll('td')].pop();
       push({
         id,

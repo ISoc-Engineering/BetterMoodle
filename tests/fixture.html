@@ -9,13 +9,16 @@
 const flags = new URLSearchParams(location.search);
 window.errors = [];
 addEventListener('error', (e) => errors.push(e.message));
-addEventListener('unhandledrejection', (e) => errors.push(String(e.reason)));
+// Chrome's own note when a page change skips its cross-fade (not our code) isn't a page error.
+addEventListener('unhandledrejection', (e) => { if (!/ViewTransition|Transition was aborted/.test(String(e.reason))) errors.push(String(e.reason)); });
 
 // chrome.* stub: storage.local with onChanged, runtime.getURL.
 const store = {};
 if (flags.get('theme')) store.theme = flags.get('theme');
 if (flags.get('enabled') === '0') store.enabled = false;
 if (flags.get('aggressive') === '1') store.aggressive = true;
+// seenbase=<ids>: what you'd seen in COMP0002 on your last visit (so the rest count as new).
+if (flags.get('seenbase')) store['u7:seenfiles:101'] = { t: Date.now(), v: flags.get('seenbase').split(',') };
 const listeners = [];
 const fail = () => { if (flags.get('storage') === 'fail') throw new Error('Storage unavailable'); };
 window.chrome = {

@@ -10,6 +10,13 @@
   if (off) return;
   root.classList.add('bm');
   root.dataset.bmTheme = theme; // main.js corrects this from chrome.storage if it's stale
+  // Smooth page change from a dashboard course tile: the tile's name and this page's title share a name.
+  const cid = location.pathname === '/course/view.php' && new URLSearchParams(location.search).get('id');
+  if (cid && /^\d+$/.test(cid)) {
+    const st = document.createElement('style');
+    st.textContent = `#course-header-bg h1, .page-header-headings h1 { view-transition-name: bm-course-${cid}; }`;
+    root.append(st);
+  }
   // Inside our viewer iframe: strip Moodle's chrome so only the content shows.
   if (window.top !== window) {
     try { if (window.top.location.origin === location.origin) root.classList.add('bm-embed'); } catch (_) {}

@@ -100,3 +100,42 @@ html.bm .bm-label-body img { max-width: 100%; height: auto; }
 html.bm .bm-label-body iframe { max-width: 100%; }
 html.bm .bm-label-body h1, html.bm .bm-label-body h2, html.bm .bm-label-body h3, html.bm .bm-label-body h4, html.bm .bm-label-body h5 { font-weight: 600; margin: 4px 0; }
 html.bm .bm-label-body p { margin: 0 0 6px; }
+
+/* ---- Week progress ring: files opened out of files in the week ---- */
+html.bm .bm-ring { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; font: var(--bm-weight-head) .72rem var(--bm-font-mono); color: var(--bm-muted); }
+html.bm .bm-ring svg { width: 18px; height: 18px; rotate: -90deg; }
+html.bm .bm-ring circle { fill: none; stroke-width: 3; }
+html.bm .bm-ring-track { stroke: var(--bm-line); }
+html.bm .bm-ring-fill { stroke: var(--bm-accent); stroke-linecap: round; transition: stroke-dashoffset .4s var(--bm-ease); }
+html.bm .bm-ring.is-full .bm-ring-fill { stroke: #2f9e44; }
+html.bm .bm-ring + .bm-small { margin-left: 8px; }
+
+/* ---- File rows: pin button, opened, new ---- */
+html.bm .bm-items > .bm-item { position: relative; }
+html.bm .bm-pin {
+  position: absolute; right: 8px; top: 50%; translate: 0 -50%; width: 28px; height: 28px; padding: 5px; border: 0; border-radius: 50%;
+  background: var(--bm-surface); color: var(--bm-muted); cursor: pointer; opacity: 0; transition: opacity .15s;
+}
+html.bm .bm-pin svg { width: 100%; height: 100%; fill: currentColor; }
+html.bm .bm-item:hover .bm-pin, html.bm .bm-pin:focus-visible, html.bm .bm-pin[aria-pressed="true"] { opacity: 1; }
+html.bm .bm-pin[aria-pressed="true"] { color: var(--bm-accent); }
+html.bm .bm-item:hover .bm-item-meta, html.bm .bm-item:has(.bm-pin[aria-pressed="true"]) .bm-item-meta { margin-right: 32px; }
+html.bm .bm-item.is-opened .bm-item-name { opacity: .7; }
+html.bm .bm-tag-new { margin-left: 8px; padding: 1px 6px; border-radius: var(--bm-radius-sm); background: var(--bm-accent); color: var(--bm-on-accent); font: var(--bm-weight-head) .68rem var(--bm-font-mono); vertical-align: 2px; }
+
+/* ---- Quick look (Space on a file) ---- */
+html.bm .bm-ql { position: fixed; inset: 0; z-index: 99950; display: grid; place-items: center; padding: 3vh 3vw; background: var(--bm-overlay); }
+html.bm .bm-ql[hidden] { display: none; }
+html.bm .bm-ql-box {
+  display: flex; flex-direction: column; width: min(1200px, 100%); height: 100%; overflow: hidden;
+  background: var(--bm-surface); border: var(--bm-border-strong) solid var(--bm-line); border-radius: var(--bm-radius-lg);
+  animation: bm-ql-in .18s ease-out;
+}
+html.bm .bm-ql-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: var(--bm-border) solid var(--bm-line); }
+html.bm .bm-ql-title { font: var(--bm-weight-head) 1rem var(--bm-font-display); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+html.bm .bm-ql-count { font: var(--bm-weight-head) .8rem var(--bm-font-mono); color: var(--bm-muted); }
+html.bm .bm-ql-body { flex: 1; min-height: 0; display: grid; }
+html.bm .bm-ql-body iframe { width: 100%; height: 100%; border: 0; }
+html.bm.bm-ql-open body { overflow: hidden; }
+@keyframes bm-ql-in { from { opacity: 0; scale: .97; } }
+@media (prefers-reduced-motion: reduce) { html.bm .bm-ql-box { animation: none; } }

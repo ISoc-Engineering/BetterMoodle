@@ -120,6 +120,7 @@ BM.viewer = {
         h('p', { class: 'bm-muted' }, [what, it.size ? ` (${it.size})` : '']),
         h('a', { class: 'bm-btn bm-btn-primary', href: it.url, target: '_blank', rel: 'noopener' }, 'Open / download ↗')));
     }
+    if (it.module !== 'discussion') BM.opened.mark(it.id);
     this.onChange?.(it);
   },
 };

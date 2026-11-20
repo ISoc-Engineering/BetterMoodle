@@ -24,6 +24,8 @@ var BM = globalThis.BM;
   BM.cursor?.init();
 
   if (!BM.cfg().sesskey || !BM.cfg().userId) return; // logged out: reskin only
+  await Promise.all([BM.colors.load(), BM.opened.load()]);
+  BM.app.init();
 
   const id = document.body.id;
   try {

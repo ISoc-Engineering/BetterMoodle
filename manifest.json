@@ -51,12 +51,15 @@
         "src/lib/api.js",
         "src/lib/course-data.js",
         "src/lib/forum-data.js",
+        "src/lib/personal.js",
         "src/features/viewer.js",
+        "src/features/quicklook.js",
         "src/features/course.js",
         "src/features/home.js",
         "src/features/forum.js",
         "src/features/palette.js",
         "src/features/cursor.js",
+        "src/features/app.js",
         "src/main.js"
       ],
       "run_at": "document_idle"

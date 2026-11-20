@@ -19,7 +19,9 @@ const SCENARIOS = [
   '/my/?check=homeForumFallback&forumapi=fail&forumpages=fail',
   '/my/?check=storageFails&storage=fail',
   '/my/?check=switchedOff&enabled=0',
-  '/course/view.php?id=101&check=course',
+  '/course/view.php?id=101&check=course&seenbase=2000,2001,2002',
+  '/course/view.php?id=101&check=courseSlides#bm-slides',
+  '/mod/forum/index.php?id=101&check=forumDeep&forumapi=fail#post=202',
   '/course/view.php?id=101&check=coursePopAggressive&theme=pop&aggressive=1',
   // forumapi=fail everywhere: like UCL, Moodle's forum web services are switched off.
   '/mod/forum/view.php?id=2004&check=forum&forumapi=fail',

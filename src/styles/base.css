@@ -57,6 +57,17 @@ html.bm .secondary-navigation .nav-link.active { color: var(--bm-text); border-b
 html.bm .activityiconcontainer, html.bm .activity-icon { background: transparent !important; }
 html.bm img.activityicon, html.bm .bm-icon { filter: grayscale(1) contrast(.9); opacity: .75; }
 
+/* Smooth page changes: Chrome cross-fades between Moodle pages instead of flashing white. The top bar
+ * stays put, and a course's name on the dashboard grows into the course page title (the matching
+ * view-transition-name is set by home.js and course.js). Off with reduced motion. */
+@view-transition { navigation: auto; }
+html.bm #ucl-navbar { view-transition-name: bm-navbar; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .22s; }
+::view-transition-group(*) { animation-duration: .32s; animation-timing-function: cubic-bezier(.2, .8, .2, 1); }
+@media (prefers-reduced-motion: reduce) {
+  @view-transition { navigation: none; }
+}
+
 /* Our views replace these when active (toggle back with "Classic view"). */
 html.bm .bm-replaced { display: none !important; }
 

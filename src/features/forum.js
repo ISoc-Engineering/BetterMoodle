@@ -63,11 +63,31 @@ BM.forum = {
       const f = this.forums.find((x) => x.cmid === id);
       if (f) this.state.forum = f.id;
     }
-    BM.recent.visit(courseId);
+    BM.whenShown(() => BM.recent.visit(courseId));
+    this.pinned = new Set(Object.keys(await BM.pins.all()));
 
     this.build(anchor);
     await this.loadAll(); // errors go to init(), which falls back to the classic page for this visit only
+    this.openFromHash();
     return '';
+  },
+
+  // From the dashboard or a live alert: #post=<discussion id> scrolls to that post and opens its replies.
+  async openFromHash() {
+    const id = location.hash.match(/post=(\d+)/)?.[1];
+    if (!id) return;
+    history.replaceState(null, '', location.pathname + location.search);
+    const d = this.posts.find((x) => String(x.id) === id);
+    if (!d) return;
+    if (this.state.forum !== 'all' && d.forumId !== this.state.forum) this.tabsEl.querySelector('[data-forum="all"]')?.click();
+    // Load the post first if we don't know yet whether it has replies.
+    if (!d.loaded && !d.replies) await this.fill(d);
+    const card = this.feedEl.querySelector(`.bm-post[data-id="${id}"]`);
+    if (!card) return;
+    card.scrollIntoView({ block: 'start' });
+    card.classList.add('is-target');
+    const btn = card.querySelector('.bm-post-foot [aria-expanded]');
+    if (btn && !btn.disabled && btn.getAttribute('aria-expanded') !== 'true') btn.click();
   },
 
   build(anchor) {
@@ -138,7 +158,7 @@ BM.forum = {
         const [code, ...rest] = c.name.split(':');
         const unread = c.id === this.courseId ? this.forums.reduce((n, f) => n + f.unread, 0) : 0;
         return h('li', {},
-          h('a', { class: 'bm-rail-course', href: `/mod/forum/index.php?id=${c.id}`, style: `--c:${BM.colorFor(i)}`,
+          h('a', { class: 'bm-rail-course', href: `/mod/forum/index.php?id=${c.id}`, style: `--c:${BM.courseColor(c.id)}`,
             'aria-current': c.id === this.courseId ? 'page' : null },
             h('span', { class: 'bm-rail-text' },
               rest.length ? h('span', { class: 'bm-rail-code' }, code.trim()) : null,
@@ -329,12 +349,29 @@ BM.forum = {
         d.replies && d.lastBy && d.lastTs ? h('span', { class: 'bm-muted bm-small' }, `Latest from ${d.lastBy}, ${BM.ago(d.lastTs)}`) : null,
         h('div', { class: 'bm-spacer' }),
         d.locked ? null : h('a', { class: 'bm-post-action', href: d.postId ? `/mod/forum/post.php?reply=${d.postId}` : d.url }, 'Reply'),
+        this.pinButton(d),
         h('a', { class: 'bm-post-action', href: d.url }, 'Open in Moodle')),
       thread);
     repliesBtn.addEventListener('click', () => this.toggleThread(d, thread, repliesBtn, art));
     // Only offer "Show more" when the post is actually cut off.
     requestAnimationFrame(() => { more.hidden = body.scrollHeight <= body.clientHeight + 2; body.classList.toggle('is-clamped', !more.hidden); });
     return art;
+  },
+
+  pinButton(d) {
+    const course = this.courses.find((c) => c.id === this.courseId);
+    const p = { kind: 'post', id: d.id, title: d.title, url: BM.forumLink(this.courseId, d.id), course: course?.name || '', courseId: this.courseId };
+    const on = this.pinned.has(BM.pins.key(p));
+    const b = BM.h('button', { class: 'bm-post-action', 'aria-pressed': String(on) }, on ? 'Pinned' : 'Pin');
+    b.addEventListener('click', async () => {
+      const now = b.getAttribute('aria-pressed') !== 'true';
+      b.setAttribute('aria-pressed', String(now));
+      b.textContent = now ? 'Pinned' : 'Pin';
+      if (now) this.pinned.add(BM.pins.key(p)); else this.pinned.delete(BM.pins.key(p));
+      await BM.pins.toggle(p, now);
+      BM.toast(now ? 'Pinned to your dashboard' : 'Unpinned');
+    });
+    return b;
   },
 
   async toggleThread(d, thread, btn, art) {

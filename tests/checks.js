@@ -53,20 +53,52 @@
         expect($('.bm-course').textContent.includes('Theory of Computation'), 'visited course should be first');
         expect($$('.bm-course')[1].textContent.includes('Object-Oriented'), 'then Moodle order');
       });
-      await check('hero: what is due, the next deadline and a ticking countdown', async () => {
-        await until(() => $('.bm-hero:not([hidden]) .bm-hero-count'), 'hero');
-        const lines = texts('.bm-hero-line');
-        expect(lines.join('|') === '1 due this week.|1 overdue.', `headline should be "1 due this week. 1 overdue.", got ${lines.join(' ')}`);
-        expect($('.bm-hero-next-name').textContent === 'Haskell sheet 1', 'next up should be Haskell sheet 1');
-        expect(!$('.bm-hero-next').classList.contains('is-soon'), 'due in 26h is not "soon" (under a day)');
-        const before = $('.bm-hero-count').textContent;
-        expect(/^1d \d\d:\d\d:\d\d$/.test(before), `countdown should look like 1d 01:59:59, got ${before}`);
-        await until(() => $('.bm-hero-count').textContent !== before, 'countdown to tick');
+      await check('no headline at the top: the page starts with Due soon and Forums', async () => {
+        expect(!$('.bm-hero') && !$('.bm-home-top kbd'), 'no headline, no "Press Ctrl K" line');
+        expect($('.bm-home-body').firstElementChild.classList.contains('bm-home-grid'), 'Due soon + Forums come first');
       });
-      await check('courses sit in one sideways-scrolling row above the deadlines', async () => {
+      await check('course tiles: this week, Slides straight to it, Forum, colour', async () => {
+        await until(() => $$('.bm-course-meta').some((m) => m.textContent.includes('Week 2')), 'this week on the tiles');
+        const t = $('.bm-course[data-id="101"]');
+        expect(t.querySelector('.bm-course-btn[href="/course/view.php?id=101#bm-slides"]'), 'Slides opens the course at this week');
+        expect(t.querySelector('.bm-course-btn[href="/mod/forum/index.php?id=101"]'), 'Forum opens its forum feed');
+        expect(t.querySelector('.bm-course-name').style.viewTransitionName === 'bm-course-101', 'name grows into the course page title');
+        t.querySelector('.bm-swatch-btn').click();
+        await until(() => $('.bm-swatches'), 'colour choices');
+        $$('.bm-swatches .bm-swatch')[3].click();
+        await until(() => $('.bm-course[data-id="101"]').style.getPropertyValue('--c') === BM.PALETTE[3], 'tile takes the colour');
+        expect((await BM.colors.all())[101] === BM.PALETTE[3], 'colour remembered');
+        expect($$('.bm-due-item').filter((a) => a.textContent.includes('COMP0002')).every((a) => a.style.getPropertyValue('--c') === BM.PALETTE[3]), "and used on that course's deadlines");
+      });
+      await check('pinned files and posts show on the dashboard, with Unpin', async () => {
+        expect($('.bm-pins-panel').hidden, 'no Pinned panel until something is pinned');
+        await BM.pins.toggle({ kind: 'file', id: '2001', title: 'Lecture 1 slides', url: '/mod/resource/view.php?id=2001', course: 'COMP0002: Principles of Programming', courseId: 101 }, true);
+        await BM.home.renderPins();
+        expect(!$('.bm-pins-panel').hidden && $('.bm-pin-title').textContent === 'Lecture 1 slides', 'pinned file listed');
+        $('.bm-unpin').click();
+        await until(() => $('.bm-pins-panel').hidden, 'Unpin removes it');
+      });
+      await check('instant pages: Chrome may load view pages early, never logout/posting/discussions', async () => {
+        const rules = $('script[type="speculationrules"]');
+        if (!HTMLScriptElement.supports?.('speculationrules')) { expect(!rules, 'only added where supported'); return; }
+        const json = JSON.parse(rules.textContent).prerender[0].where.and;
+        const text = JSON.stringify(json);
+        expect(text.includes('/course/view.php') && text.includes('/mod/forum/index.php'), 'courses and forums load early');
+        for (const bad of ['logout', 'sesskey', 'post.php', 'discuss.php']) expect(text.includes(bad), `excludes ${bad}`);
+      });
+      await check('live alerts: a new forum post pops up a toast', async () => {
+        expect((await BM.app.live.check()).length === 0, 'first check just remembers what is there');
+        const seen = (await BM.store.get('live-seen')).v;
+        await BM.store.set('live-seen', seen.filter((k) => !k.startsWith('77:')));
+        const fresh = await BM.app.live.check();
+        expect(fresh.length === 1 && fresh[0].title === 'Problem class moved', 'the new post is found');
+        await until(() => $('.bm-toast')?.textContent.includes('New in COMP0147: Problem class moved'), 'toast');
+        $('.bm-toast').remove();
+      });
+      await check('courses sit in one sideways-scrolling row below the deadlines', async () => {
         await until(() => !$('.bm-course.bm-enter'), 'Pop! entrance animation to finish');
         const strip = $('.bm-course-strip');
-        expect(strip.closest('.bm-panel').compareDocumentPosition($('#bm-h-due')) & Node.DOCUMENT_POSITION_FOLLOWING, 'courses should come before Due soon');
+        expect($('#bm-h-due').compareDocumentPosition(strip) & Node.DOCUMENT_POSITION_FOLLOWING, 'courses come after Due soon');
         const tops = new Set($$('.bm-course').map((c) => Math.round(c.getBoundingClientRect().top)));
         expect(tops.size === 1, `all course tiles should be on one row, got ${tops.size} rows`);
         expect(strip.scrollWidth > strip.clientWidth, '6 courses should overflow and scroll');
@@ -78,7 +110,7 @@
         strip.scrollLeft = strip.scrollWidth;
         await until(() => next.disabled, 'right arrow off at the end');
       });
-      await check('forum updates: newest posts from every forum in every course, new ones tagged', async () => {
+      await check('Forums panel: newest posts from every forum in every course, new ones tagged', async () => {
         await until(() => $$('.bm-news-item').length === 6, '6 forum posts');
         const t = texts('.bm-news-title');
         expect(t[0] === 'Problem class moved' && t[1] === 'Segfault in the maze solver', `newest first, got ${t.slice(0, 2).join(' | ')}`);
@@ -99,9 +131,10 @@
         await BM.done.queue;
         expect(!(await BM.done.all())[903], 'no longer remembered as done');
       });
-      await check('Forum updates fold away and back; Feedback tracker and Forums shortcuts below', async () => {
+      await check('Forums fold away and back; posts and Open forums go to our feed; Feedback tracker below', async () => {
         const head = $('.bm-news-panel .bm-fold-head');
-        expect(head.textContent === 'Forum updates', 'panel is called Forum updates');
+        expect(head.textContent === 'Forums', 'panel is called Forums');
+        expect($('.bm-news-item').getAttribute('href') === '/mod/forum/index.php?id=102#post=77', `a post opens our feed at that post, got ${$('.bm-news-item').getAttribute('href')}`);
         expect(head.getAttribute('aria-expanded') === 'true' && !$('#bm-news-body').hidden, 'starts open');
         head.click();
         await until(() => $('#bm-news-body').hidden, 'to fold away');
@@ -111,10 +144,10 @@
         const fb = $('.bm-shortcut.is-feedback');
         expect(fb && fb.getAttribute('href') === '/local/ucl_tracker/index.php', `Feedback tracker = the top bar's link, got ${fb && fb.getAttribute('href')}`);
         expect(fb.textContent.trim().startsWith('Feedback tracker') && !$('.bm-shortcuts p'), 'just the name, no explaining sentence');
-        await until(() => !$('.bm-shortcut.is-forums').hidden, 'Forums shortcut');
-        const firstCourse = $('.bm-course').getAttribute('href').split('id=')[1];
-        expect($('.bm-shortcut.is-forums').getAttribute('href') === `/mod/forum/index.php?id=${firstCourse}`, 'Forums opens your most recently used course');
-        expect($('.bm-news-panel').compareDocumentPosition($('.bm-shortcuts')) & Node.DOCUMENT_POSITION_FOLLOWING, 'shortcuts sit below Forum updates');
+        await until(() => !$('.bm-open-forums').hidden, 'Open forums button');
+        const firstCourse = $('.bm-course').dataset.id;
+        expect($('.bm-open-forums').getAttribute('href') === `/mod/forum/index.php?id=${firstCourse}`, 'Open forums opens your most recently used course');
+        expect($('.bm-news-panel').compareDocumentPosition($('.bm-shortcuts')) & Node.DOCUMENT_POSITION_FOLLOWING, 'Feedback tracker sits below Forums');
       });
       await check('classic dashboard toggle swaps views', async () => {
         const btn = $('.bm-home-top .bm-link-btn');
@@ -212,6 +245,36 @@
         await until(() => !$('.bm-reveal'), 'reveal to finish');
         expect($$('.bm-section').every((sec) => css(sec, 'opacity') === '1'), 'every section should end at full opacity');
       });
+      await check('files added since your last visit are tagged New', async () => {
+        await until(() => $$('.bm-item.is-new').length === 2, 'two new files');
+        expect(texts('.bm-item.is-new .bm-item-name').map((t) => t.replace(/New$/, '')).sort().join('|') === 'Lecture 2 slides|Starter code', 'the right ones');
+      });
+      await check('week progress ring fills as you open files', async () => {
+        const ring = () => $$('.bm-section')[1].querySelector('.bm-ring');
+        expect(ring().dataset.done === '0' && ring().dataset.total === '2', `Week 1 starts at 0/2, got ${ring().dataset.done}/${ring().dataset.total}`);
+        BM.opened.mark('2002');
+        await until(() => ring().dataset.done === '1', 'ring to show 1/2');
+        expect($('.bm-item[data-id="2002"]').classList.contains('is-opened'), 'the file looks opened');
+      });
+      await check('Quick look: Space previews a file full screen, arrows flip, Esc closes', async () => {
+        $('.bm-item[data-id="2001"] .bm-item-link').focus();
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+        await until(() => $('.bm-ql') && !$('.bm-ql').hidden, 'Quick look');
+        expect($('.bm-ql iframe').getAttribute('src').includes('id=2001'), 'shows that file');
+        const first = $('.bm-ql-count').textContent;
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+        expect($('.bm-ql-count').textContent !== first, 'arrow goes to the next file');
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        expect($('.bm-ql').hidden, 'Esc closes');
+        expect(BM.opened.cache['2001'], 'previewing counts as opened');
+      });
+      await check('pin a file to the dashboard', async () => {
+        const btn = $('.bm-item[data-id="2005"] .bm-pin');
+        btn.click();
+        await until(async () => true, 'click');
+        await BM.pins.queue;
+        expect(btn.getAttribute('aria-pressed') === 'true' && (await BM.pins.all())['file:2005'], 'pinned');
+      });
       await check('Weeks view: latest weeks open, General collapsed, your choices remembered', async () => {
         const folded = $$('.bm-section').map((sec) => sec.classList.contains('is-collapsed'));
         expect(folded.join() === 'true,false,false', `General collapsed, Week 1 and 2 open; got ${folded.join()}`);
@@ -243,7 +306,7 @@
       });
       await check('Slides & files: only material, each week split into Slides then Files', async () => {
         $('.bm-chip[data-chip="materials"]').click();
-        const shown = $$('.bm-item').filter((li) => !li.hidden).map((li) => li.querySelector('.bm-item-name').textContent);
+        const shown = $$('.bm-item').filter((li) => !li.hidden).map((li) => li.querySelector('.bm-item-name').textContent.replace(/New$/, ''));
         expect(shown.sort().join('|') === 'Lab sheet 1|Lecture 1 slides|Lecture 2 slides|Module handbook|Starter code', `got ${shown.join('|')}`);
         const week1 = $$('.bm-section')[1];
         const top = (sel) => [...week1.querySelectorAll(sel)].find((e) => !e.hidden).getBoundingClientRect().top;
@@ -353,6 +416,30 @@
         expect($('.bm-forum-note button').textContent === 'Try again', 'offers Try again');
         expect(!$('#page-content').classList.contains('bm-replaced') && visible($('#stock')), 'Moodle page still shown');
         expect(localStorage.getItem('bm:classicForum') !== '1', 'not stuck on Classic view next time');
+      });
+    },
+
+    async courseSlides(check) {
+      await check("Slides on a course tile opens Slides & files at this week", async () => {
+        await until(() => $$('.bm-section').length === 3, 'sections');
+        await until(() => $('.bm-chip[data-chip="materials"]').getAttribute('aria-pressed') === 'true', 'Slides & files selected');
+        expect(!location.hash, 'the address is tidied');
+      });
+    },
+
+    async forumDeep(check) {
+      await check('opening a post from the dashboard: our feed, scrolled to it, replies open', async () => {
+        await until(() => $('.bm-post.is-target'), 'the post highlighted');
+        const card = $('.bm-post.is-target');
+        expect(card.dataset.id === '202', 'the right post');
+        try { await until(() => card.querySelectorAll('.bm-reply').length === 3, 'its replies open'); }
+        catch (e) { const f = card.querySelector('.bm-post-foot'); throw new Error(`${e.message}; connected=${card.isConnected} foot=${f && f.textContent} expanded=${f && f.querySelector('[aria-expanded]')?.getAttribute('aria-expanded')} thread=${card.querySelector('.bm-thread')?.textContent.slice(0, 80)}`); }
+      });
+      await check('pin a forum post', async () => {
+        const btn = [...$('.bm-post[data-id="202"]').querySelectorAll('.bm-post-action')].find((b) => b.textContent === 'Pin');
+        btn.click();
+        await BM.pins.queue;
+        expect(btn.textContent === 'Pinned' && (await BM.pins.all())['post:202'].url === '/mod/forum/index.php?id=101#post=202', 'pinned, linking back into the feed');
       });
     },
 
