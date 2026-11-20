@@ -1,5 +1,6 @@
-// Dashboard (/my/): Due soon, grouped by when; Courses (with cover images where the theme shows them);
-// and the latest Announcements from every current course. The stock dashboard sits behind a toggle.
+// Dashboard (/my/): a sideways-scrolling strip of Courses across the top (cover images where the theme
+// shows them), then Due soon grouped by when, and the latest Announcements from every current course.
+// The stock dashboard sits behind a toggle.
 var BM = globalThis.BM;
 
 BM.home = {
@@ -13,14 +14,23 @@ BM.home = {
     try { classic = localStorage.getItem('bm:classicHome') === '1'; } catch (_) {}
 
     this.dueEl = h('div', { class: 'bm-due-list' }, h('p', { class: 'bm-muted' }, 'Loading deadlines…'));
-    this.coursesEl = h('ul', { class: 'bm-course-list' }, h('li', { class: 'bm-muted' }, 'Loading courses…'));
+    this.coursesEl = h('ul', { class: 'bm-course-list bm-course-strip' }, h('li', { class: 'bm-muted' }, 'Loading courses…'));
+    this.coursesEl.addEventListener('scroll', () => this.updateArrows(), { passive: true });
+    // Pop!'s entrance animation shrinks the tiles at first, so re-measure once it finishes.
+    this.coursesEl.addEventListener('animationend', () => this.updateArrows());
+    this.prevBtn = h('button', { class: 'bm-strip-btn', 'aria-label': 'Scroll courses left', onclick: () => this.scrollCourses(-1) }, '‹');
+    this.nextBtn = h('button', { class: 'bm-strip-btn', 'aria-label': 'Scroll courses right', onclick: () => this.scrollCourses(1) }, '›');
     this.newsEl = h('div', { class: 'bm-news' }, h('p', { class: 'bm-muted' }, 'Loading announcements…'));
     const toggle = h('button', { class: 'bm-link-btn' });
-    const body = h('div', { class: 'bm-home-grid' },
-      h('section', { class: 'bm-panel', 'aria-labelledby': 'bm-h-due' }, h('h2', { class: 'bm-h2', id: 'bm-h-due' }, 'Due soon'), this.dueEl),
-      h('div', { class: 'bm-home-side' },
-        h('section', { class: 'bm-panel', 'aria-labelledby': 'bm-h-courses' }, h('h2', { class: 'bm-h2', id: 'bm-h-courses' }, 'Courses'), this.coursesEl),
+    const body = h('div', { class: 'bm-home-body' },
+      h('section', { class: 'bm-panel bm-courses', 'aria-labelledby': 'bm-h-courses' },
+        h('div', { class: 'bm-courses-head' },
+          h('h2', { class: 'bm-h2', id: 'bm-h-courses' }, 'Courses'), h('div', { class: 'bm-spacer' }), this.prevBtn, this.nextBtn),
+        this.coursesEl),
+      h('div', { class: 'bm-home-grid' },
+        h('section', { class: 'bm-panel', 'aria-labelledby': 'bm-h-due' }, h('h2', { class: 'bm-h2', id: 'bm-h-due' }, 'Due soon'), this.dueEl),
         h('section', { class: 'bm-panel', 'aria-labelledby': 'bm-h-news' }, h('h2', { class: 'bm-h2', id: 'bm-h-news' }, 'Announcements'), this.newsEl)));
+    addEventListener('resize', () => this.updateArrows(), { passive: true });
     const root = h('div', { id: 'bm-home', class: 'bm-root' },
       h('div', { class: 'bm-home-top' },
         h('span', { class: 'bm-muted bm-small' }, 'Press ', h('kbd', {}, navigator.platform.includes('Mac') ? '⌘K' : 'Ctrl K'), ' to search everything'),
@@ -92,6 +102,23 @@ BM.home = {
             h('span', { class: 'bm-course-name' }, hasCode ? rest.join(':').trim() : c.name))));
     }));
     if (first) BM.enter(this.coursesEl.querySelectorAll('.bm-course'));
+    this.updateArrows();
+  },
+
+  // The arrows move the course strip by about one screenful; they grey out at either end.
+  scrollCourses(dir) {
+    const el = this.coursesEl;
+    const smooth = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+    el.scrollBy({ left: dir * Math.max(200, el.clientWidth * 0.8), behavior: smooth ? 'smooth' : 'auto' });
+  },
+
+  updateArrows() {
+    const el = this.coursesEl;
+    if (!el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    this.prevBtn.disabled = el.scrollLeft <= 1;
+    this.nextBtn.disabled = el.scrollLeft >= max - 1;
+    this.prevBtn.hidden = this.nextBtn.hidden = max <= 1; // everything fits: no arrows
   },
 
   renderNews(items) {

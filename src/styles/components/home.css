@@ -1,9 +1,9 @@
-/* Dashboard (/my/): Due soon, Courses, Announcements. Tokens only. */
+/* Dashboard (/my/): Courses strip on top, then Due soon and Announcements. Tokens only. */
 
 html.bm #bm-home { margin-top: 28px; }
 html.bm .bm-home-top { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
 html.bm .bm-home-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 24px; align-items: start; }
-html.bm .bm-home-side { display: grid; gap: 24px; min-width: 0; }
+html.bm .bm-home-body { display: grid; gap: 24px; }
 @media (max-width: 900px) { html.bm .bm-home-grid { grid-template-columns: minmax(0, 1fr); } }
 
 /* ---- Due soon ---- */
@@ -33,6 +33,34 @@ html.bm .bm-course-img {
 html.bm .bm-course-text { display: flex; flex-direction: column; min-width: 0; }
 html.bm .bm-course-code { font: var(--bm-weight-head) .78rem var(--bm-font-mono); color: var(--bm-muted); letter-spacing: .02em; }
 html.bm .bm-course-name { font-weight: var(--bm-weight-strong); }
+
+/* The strip: one row of fixed-width course tiles that scrolls sideways (trackpad, shift+wheel, the
+ * arrows, or Tab through the links). Padding keeps hover shadows from being clipped by the scroller. */
+html.bm .bm-courses-head { display: flex; align-items: center; gap: 8px; }
+html.bm .bm-courses-head .bm-h2 { margin-bottom: 0; }
+html.bm .bm-course-strip {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 220px; gap: 12px;
+  overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scroll-padding-inline: 2px 14px;
+  padding: 12px 14px 14px 2px; margin: 0 -14px -14px -2px; scrollbar-width: thin;
+}
+html.bm .bm-course-strip > li { scroll-snap-align: start; display: flex; min-width: 0; }
+html.bm .bm-course-strip .bm-course {
+  flex: 1; flex-direction: column; align-items: stretch; gap: 8px; margin: 0; padding: 10px;
+  border: var(--bm-border) solid var(--bm-line);
+}
+html.bm .bm-course-strip .bm-course-img { width: 100%; height: 56px; }
+html.bm .bm-course-strip .bm-course-name {
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+html.bm .bm-strip-btn {
+  flex: none; width: 32px; height: 32px; display: grid; place-items: center; padding: 0;
+  font: var(--bm-weight-head) 1.3rem/1 var(--bm-font-display); color: var(--bm-text);
+  background: var(--bm-surface); border: var(--bm-border) solid var(--bm-line); border-radius: var(--bm-radius-pill);
+  box-shadow: var(--bm-shadow); cursor: pointer; transition: translate var(--bm-fast) var(--bm-ease);
+}
+html.bm .bm-strip-btn:hover:not(:disabled) { background: var(--bm-bg-soft); }
+html.bm .bm-strip-btn:disabled { opacity: .35; cursor: default; box-shadow: none; }
+html.bm .bm-strip-btn[hidden] { display: none; }
 
 /* ---- Announcements ---- */
 html.bm .bm-news-list li + li { border-top: var(--bm-border) solid var(--bm-line); }

@@ -33,6 +33,11 @@ COURSES = [
      'courseimage': 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciLz4='},
     {'id': 102, 'fullname': 'COMP0147: Discrete Mathematics', 'shortname': 'COMP0147', 'coursecategory': 'Computer Science',
      'isfavourite': True, 'viewurl': '/course/view.php?id=102', 'courseimage': 'https://tracker.example/pixel.png'},
+] + [  # four more, so the dashboard's course strip has to scroll
+    {'id': cid, 'fullname': name, 'shortname': name.split(':')[0], 'coursecategory': 'Computer Science',
+     'isfavourite': False, 'viewurl': f'/course/view.php?id={cid}', 'courseimage': ''}
+    for cid, name in [(103, 'COMP0003: Theory of Computation'), (104, 'COMP0004: Object-Oriented Programming'),
+                      (105, 'ENGF0001: Engineering Challenges'), (106, 'COMP0005: Algorithms')]
 ]
 
 def event(eid, name, course, offset, kind='Assignment is due'):

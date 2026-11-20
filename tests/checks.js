@@ -38,11 +38,26 @@
         expect($('.bm-due-name').textContent.includes('Robot maze'), 'Robot maze should come first');
       });
       await check('courses: favourite first, external image dropped, images shown in Pop!', async () => {
-        await until(() => $$('.bm-course').length === 2, '2 courses');
+        await until(() => $$('.bm-course').length === 6, '6 courses');
         expect($('.bm-course').textContent.includes('Discrete'), 'starred course should be first');
         const imgs = $$('.bm-course-img');
         expect(imgs.length === 1, `only the safe data: image should be kept, got ${imgs.length}`);
         expect(css(imgs[0], 'display') === 'block', 'Pop! should show course images');
+      });
+      await check('courses sit in one sideways-scrolling row above the deadlines', async () => {
+        await until(() => !$('.bm-course.bm-enter'), 'Pop! entrance animation to finish');
+        const strip = $('.bm-course-strip');
+        expect(strip.closest('.bm-panel').compareDocumentPosition($('#bm-h-due')) & Node.DOCUMENT_POSITION_FOLLOWING, 'courses should come before Due soon');
+        const tops = new Set($$('.bm-course').map((c) => Math.round(c.getBoundingClientRect().top)));
+        expect(tops.size === 1, `all course tiles should be on one row, got ${tops.size} rows`);
+        expect(strip.scrollWidth > strip.clientWidth, '6 courses should overflow and scroll');
+        const [prev, next] = $$('.bm-strip-btn');
+        expect(!prev.hidden && prev.disabled && !next.disabled, 'at the start: left arrow off, right arrow on');
+        next.click();
+        await until(() => strip.scrollLeft > 0, 'strip to scroll right');
+        await until(() => !prev.disabled, 'left arrow to turn on');
+        strip.scrollLeft = strip.scrollWidth;
+        await until(() => next.disabled, 'right arrow off at the end');
       });
       await check('announcements from the forum API, newest first', async () => {
         await until(() => $$('.bm-news-item').length === 2, '2 announcements');
@@ -83,7 +98,7 @@
 
     async homeSoft(check) {
       await check('Soft theme: tokens applied and course images shown', async () => {
-        await until(() => $$('.bm-course').length === 2, '2 courses');
+        await until(() => $$('.bm-course').length === 6, '6 courses');
         expect(html.dataset.bmTheme === 'soft', 'theme should be soft');
         expect(css(html, '--bm-accent') === '#315f85', `accent should be #315f85, got ${css(html, '--bm-accent')}`);
         expect(css($('.bm-course-img'), 'display') === 'block', 'Soft should show course images');

@@ -120,7 +120,9 @@ html.bm[data-bm-theme="pop"] .bm-label { padding-left: 4px; }
 html.bm[data-bm-theme="pop"] .bm-icon { filter: none; opacity: 1; }
 
 /* Course list on the dashboard. */
-html.bm[data-bm-theme="pop"] .bm-course-list { display: grid; gap: 14px; }
+html.bm[data-bm-theme="pop"] .bm-course-list { gap: 14px; }
+html.bm[data-bm-theme="pop"] .bm-course-strip .bm-course-name { font-size: 1.05rem; }
+html.bm[data-bm-theme="pop"] .bm-strip-btn:active:not(:disabled) { translate: 2px 2px; box-shadow: none; }
 html.bm[data-bm-theme="pop"] .bm-course { margin: 0; padding: 12px 14px; }
 html.bm[data-bm-theme="pop"] .bm-course-name { font: 900 clamp(1rem, 2.4vw, 1.25rem) / 1.05 var(--bm-font-display); text-transform: uppercase; }
 html.bm[data-bm-theme="pop"] .bm-course-code { color: var(--ink); font-weight: 800; text-transform: uppercase; }
