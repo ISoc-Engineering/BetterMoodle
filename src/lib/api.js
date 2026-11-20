@@ -28,7 +28,40 @@ BM.api = {
       category: BM.text(c.coursecategory),
       fav: !!c.isfavourite,
       url: c.viewurl,
+      image: BM.api.safeImage(c.courseimage),
     }));
+  },
+
+  // Course images are either Moodle's generated SVG pattern (a data: URI) or a pluginfile.php URL on
+  // the same site. Anything else is dropped so a course can't point us at an external tracker.
+  safeImage(src) {
+    if (typeof src !== 'string' || !src) return '';
+    if (/^data:image\/(svg\+xml|png|jpe?g|gif|webp)[;,]/i.test(src)) return src;
+    try {
+      const u = new URL(src, location.origin);
+      return u.origin === location.origin && u.pathname.startsWith('/pluginfile.php/') ? u.href : '';
+    } catch (_) { return ''; }
+  },
+
+  // Latest posts in each current course's Announcements forum (forum type 'news').
+  async announcements(courses, perForum = 3) {
+    if (!courses.length) return [];
+    const forums = await this.call('mod_forum_get_forums_by_courses', { courseids: courses.map((c) => c.id) });
+    const names = new Map(courses.map((c) => [Number(c.id), c.name]));
+    const news = forums.filter((f) => f.type === 'news');
+    const lists = await BM.pool(news, 3, async (f) => {
+      const d = await this.call('mod_forum_get_forum_discussions', { forumid: f.id, page: 0, perpage: perForum });
+      return (d.discussions || []).map((x) => ({
+        id: x.discussion,
+        title: BM.text(x.name || x.subject),
+        author: BM.text(x.userfullname || ''),
+        ts: x.timemodified || x.created,
+        courseId: Number(f.course),
+        courseName: names.get(Number(f.course)) || '',
+        url: `/mod/forum/discuss.php?d=${encodeURIComponent(x.discussion)}`,
+      }));
+    });
+    return lists.flat().filter(Boolean).sort((a, b) => b.ts - a.ts);
   },
 
   mapEvent(e) {

@@ -3,7 +3,7 @@
 var BM = globalThis.BM;
 
 BM.course = {
-  CHIPS: [['all', 'All'], ['files', 'Files'], ['recordings', 'Recordings'], ['assess', 'Assessments'], ['forums', 'Forums']],
+  CHIPS: [['all', 'All'], ['slides', 'Slides'], ['files', 'Files'], ['recordings', 'Recordings'], ['assess', 'Assessments'], ['forums', 'Forums']],
   model: null,
   filter: { q: '', chip: 'all' },
 
@@ -156,7 +156,7 @@ BM.course = {
         this.openItem(it.id);
       });
     }
-    return h('li', { class: 'bm-item', dataset: { id: it.id, cat: BM.courseData.category(it), text: (it.name + ' ' + descText + ' ' + meta).toLowerCase() } }, a);
+    return h('li', { class: 'bm-item', dataset: { id: it.id, cat: BM.courseData.category(it), slides: BM.courseData.isSlides(it) ? '1' : '0', text: (it.name + ' ' + descText + ' ' + meta).toLowerCase() } }, a);
   },
 
   modLabel(mod) {
@@ -174,7 +174,8 @@ BM.course = {
       let shown = 0;
       for (const li of sec.querySelectorAll('.bm-items > li')) {
         const isLabel = li.classList.contains('bm-label');
-        const ok = (!q || li.dataset.text.includes(q)) && (chip === 'all' ? true : !isLabel && li.dataset.cat === chip);
+        const chipOk = chip === 'all' || (!isLabel && (chip === 'slides' ? li.dataset.slides === '1' : li.dataset.cat === chip));
+        const ok = (!q || li.dataset.text.includes(q)) && chipOk;
         li.hidden = !ok;
         if (ok && !isLabel) shown++;
         if (ok && isLabel && q) shown++;

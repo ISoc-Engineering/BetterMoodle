@@ -67,6 +67,14 @@ BM.countdown = (ts) => {
   return diff < 0 ? s + ' overdue' : 'in ' + s;
 };
 
+BM.ago = (ts) => {
+  const a = Math.max(0, BM.now() - ts);
+  if (a < 3600) return Math.max(1, Math.round(a / 60)) + 'm ago';
+  if (a < 86400) return Math.round(a / 3600) + 'h ago';
+  if (a < 30 * 86400) return Math.round(a / 86400) + 'd ago';
+  return new Date(ts * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+};
+
 BM.fmtTime = (ts) =>
   new Date(ts * 1000).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 

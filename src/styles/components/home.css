@@ -1,14 +1,15 @@
-/* Dashboard (/my/): Due soon and Courses. Tokens only. */
+/* Dashboard (/my/): Due soon, Courses, Announcements. Tokens only. */
 
 html.bm #bm-home { margin-top: 28px; }
 html.bm .bm-home-top { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-html.bm .bm-home-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 24px; }
+html.bm .bm-home-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 24px; align-items: start; }
+html.bm .bm-home-side { display: grid; gap: 24px; min-width: 0; }
 @media (max-width: 900px) { html.bm .bm-home-grid { grid-template-columns: minmax(0, 1fr); } }
 
 /* ---- Due soon ---- */
 html.bm .bm-due-group:first-child .bm-h3 { margin-top: 0; }
 html.bm .bm-due-group.is-overdue .bm-h3, html.bm .bm-due-group.is-overdue .bm-due-count { color: var(--bm-danger); }
-html.bm .bm-due-items, html.bm .bm-course-list { list-style: none; margin: 0; padding: 0; }
+html.bm .bm-due-items, html.bm .bm-course-list, html.bm .bm-news-list { list-style: none; margin: 0; padding: 0; }
 html.bm .bm-due-item {
   display: flex; gap: 12px; align-items: baseline; padding: 8px 10px; margin: 0 -10px;
   border-radius: var(--bm-radius-sm); color: var(--bm-text); text-decoration: none;
@@ -21,10 +22,20 @@ html.bm .bm-due-count { font: var(--bm-weight-head) 1em var(--bm-font-mono); fon
 
 /* ---- Courses ---- */
 html.bm .bm-course {
-  display: flex; flex-direction: column; padding: 9px 10px; margin: 0 -10px;
+  display: flex; align-items: center; gap: 12px; padding: 9px 10px; margin: 0 -10px;
   border-radius: var(--bm-radius-sm); text-decoration: none; color: var(--bm-text);
 }
 html.bm .bm-course:hover { background: var(--bm-bg-soft); text-decoration: none; color: var(--bm-text); }
+html.bm .bm-course-img {
+  display: var(--bm-show-course-img); flex: none; width: 72px; height: 48px; object-fit: cover;
+  border-radius: var(--bm-radius-sm); border: var(--bm-border) solid var(--bm-line); background: var(--bm-bg-soft);
+}
+html.bm .bm-course-text { display: flex; flex-direction: column; min-width: 0; }
 html.bm .bm-course-code { font: var(--bm-weight-head) .78rem var(--bm-font-mono); color: var(--bm-muted); letter-spacing: .02em; }
 html.bm .bm-course-name { font-weight: var(--bm-weight-strong); }
 
+/* ---- Announcements ---- */
+html.bm .bm-news-list li + li { border-top: var(--bm-border) solid var(--bm-line); }
+html.bm .bm-news-item { display: flex; flex-direction: column; padding: 9px 0; color: var(--bm-text); text-decoration: none; }
+html.bm .bm-news-item:hover { text-decoration: none; color: var(--bm-accent); }
+html.bm .bm-news-title { font-weight: var(--bm-weight-strong); overflow-wrap: anywhere; }
