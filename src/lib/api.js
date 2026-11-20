@@ -17,10 +17,12 @@ BM.api = {
     return r.data;
   },
 
+  // Current courses, most recently accessed first (the same order as Moodle's "Last accessed").
   async courses() {
-    const d = await this.call('core_course_get_enrolled_courses_by_timeline_classification', {
-      offset: 0, limit: 0, classification: 'inprogress', sort: 'fullname',
-    });
+    const args = { offset: 0, limit: 0, classification: 'inprogress' };
+    let d;
+    try { d = await this.call('core_course_get_enrolled_courses_by_timeline_classification', { ...args, sort: 'ul.timeaccess desc' }); }
+    catch (_) { d = await this.call('core_course_get_enrolled_courses_by_timeline_classification', { ...args, sort: 'fullname' }); }
     return d.courses.map((c) => ({
       id: c.id,
       name: BM.text(c.fullname),
@@ -72,6 +74,9 @@ BM.api = {
       module: e.modulename,
       ts: e.timesort,
       overdue: !!e.overdue,
+      type: e.eventtype || '',
+      // false when there's nothing left for you to do (e.g. submissions closed, or no online submission)
+      actionable: e.action ? e.action.actionable !== false : true,
       url: e.action?.url || e.url,
       actionName: e.action?.name || 'View',
       courseId: e.course?.id,
@@ -79,19 +84,26 @@ BM.api = {
     };
   },
 
-  // Completed items drop out of action events automatically.
+  // Completed items drop out of action events automatically. Past items you can no longer act on
+  // (closed, or handed in somewhere other than Moodle, like a video presentation) are dropped too,
+  // so "Overdue" only lists things you can still submit.
   async deadlines() {
     const d = await this.call('core_calendar_get_action_events_by_timesort', {
       timesortfrom: BM.now() - 30 * 86400, limitnum: 50, limittononsuspendedevents: true, // Moodle caps limitnum at 50
     });
-    return d.events.map((e) => this.mapEvent(e));
+    return this.relevant(d.events.map((e) => this.mapEvent(e)));
+  },
+
+  relevant(events) {
+    const now = BM.now();
+    return events.filter((e) => e.type !== 'gradingdue' && !(e.ts < now && (!e.actionable || e.type === 'expectcompletionon')));
   },
 
   async courseDeadlines(courseid) {
     const d = await this.call('core_calendar_get_action_events_by_course', {
       courseid, timesortfrom: BM.now() - 30 * 86400, limitnum: 50,
     });
-    return d.events.map((e) => this.mapEvent(e));
+    return this.relevant(d.events.map((e) => this.mapEvent(e)));
   },
 
   // The course index's own data source: every section and activity in one request.

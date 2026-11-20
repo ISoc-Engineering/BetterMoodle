@@ -44,12 +44,21 @@ html.bm .bm-section-head {
 }
 html.bm .bm-section-head::before { content: "\25BE"; color: var(--bm-muted); font-size: .8rem; width: 12px; display: inline-block; }
 html.bm .bm-section.is-collapsed .bm-section-head::before { content: "\25B8"; }
-html.bm .bm-section.is-collapsed .bm-items { display: none; }
-html.bm .bm-root.is-filtering .bm-section.is-collapsed .bm-items { display: block; }
+html.bm .bm-root:not(.is-filtering) .bm-section.is-collapsed .bm-items { display: none; }
 
 /* ---- Items ---- */
 html.bm .bm-items { list-style: none; margin: 0; padding: 0 var(--bm-section-pad); }
 html.bm .bm-items > li[hidden] { display: none; }
+
+/* "Slides & files": inside each week, the Slides heading and slides come first, then Files. */
+html.bm .bm-root.is-materials .bm-items { display: flex; flex-direction: column; }
+html.bm .bm-root.is-materials .bm-items > li { order: 3; }
+html.bm .bm-root.is-materials .bm-items > .bm-subhead[data-group="slides"] { order: 0; }
+html.bm .bm-root.is-materials .bm-items > .bm-item[data-slides="1"] { order: 1; }
+html.bm .bm-root.is-materials .bm-items > .bm-subhead[data-group="files"] { order: 2; }
+html.bm .bm-subhead {
+  padding: 10px 0 4px; font: var(--bm-weight-head) .75rem var(--bm-font-mono); color: var(--bm-muted); letter-spacing: .04em;
+}
 html.bm .bm-item-link {
   display: flex; align-items: center; gap: 12px; padding: 7px 10px; margin: 0 -10px;
   border-radius: var(--bm-radius-sm); color: var(--bm-text); text-decoration: none;

@@ -40,17 +40,24 @@ COURSES = [
                       (105, 'ENGF0001: Engineering Challenges'), (106, 'COMP0005: Algorithms')]
 ]
 
-def event(eid, name, course, offset, kind='Assignment is due'):
-    return {'id': eid, 'name': name, 'activityname': name, 'activitystr': kind, 'modulename': 'assign',
+def event(eid, name, course, offset, kind='Assignment is due', actionable=True, eventtype='due'):
+    return {'id': eid, 'name': name, 'activityname': name, 'activitystr': kind, 'modulename': 'assign', 'eventtype': eventtype,
             'timesort': NOW + offset, 'overdue': offset < 0, 'url': f'/mod/assign/view.php?id={eid}',
-            'action': {'url': f'/mod/assign/view.php?id={eid}', 'name': 'Add submission'},
+            'action': {'url': f'/mod/assign/view.php?id={eid}', 'name': 'Add submission', 'actionable': actionable},
             'course': {'id': course['id'], 'fullname': course['fullname']}}
 
 EVENTS = [
     event(901, 'Robot maze', COURSES[0], -3600),
     event(902, 'Haskell sheet 1', COURSES[0], 26 * 3600),
     event(903, 'Proofs problem set', COURSES[1], 9 * 86400),
+    # Past, but nothing left to do (handed in outside Moodle / closed): must NOT show as overdue.
+    event(904, 'Individual video presentation', COURSES[0], -2 * 86400, actionable=False),
+    # A marking deadline for staff: never shown to students.
+    event(905, 'Mark the robot mazes', COURSES[0], 3 * 86400, kind='Grading due', eventtype='gradingdue'),
 ]
+
+# What Moodle returns for sort='ul.timeaccess desc' (most recently accessed first).
+ACCESS_ORDER = [104, 101, 103, 102, 106, 105]
 
 # Sections: General (aggressive mode hides it), two weeks of material.
 SECTIONS = [
@@ -95,7 +102,10 @@ DISCUSSIONS = {
 
 def web_service(method, args):
     if method == 'core_course_get_enrolled_courses_by_timeline_classification':
-        return {'courses': COURSES, 'nextoffset': 2}
+        courses = COURSES
+        if args.get('sort') == 'ul.timeaccess desc':
+            courses = sorted(COURSES, key=lambda c: ACCESS_ORDER.index(c['id']))
+        return {'courses': courses, 'nextoffset': len(courses)}
     if method == 'core_calendar_get_action_events_by_timesort':
         return {'events': EVENTS}
     if method == 'core_calendar_get_action_events_by_course':

@@ -34,15 +34,24 @@
       });
       await check('due soon lists all three deadlines, overdue first', async () => {
         await until(() => $$('.bm-due-item').length === 3, '3 due items');
+        expect(!texts('.bm-due-name').includes('Individual video presentation'), 'a closed item you cannot submit any more is not overdue');
+        expect(!texts('.bm-due-name').includes('Mark the robot mazes'), 'staff grading deadlines are hidden');
         expect($('.bm-due-group').classList.contains('is-overdue'), 'first group should be Overdue');
         expect($('.bm-due-name').textContent.includes('Robot maze'), 'Robot maze should come first');
       });
-      await check('courses: favourite first, external image dropped, images shown in Pop!', async () => {
+      await check('courses: most recently used first, external image dropped, images shown in Pop!', async () => {
         await until(() => $$('.bm-course').length === 6, '6 courses');
-        expect($('.bm-course').textContent.includes('Discrete'), 'starred course should be first');
+        expect($('.bm-course').textContent.includes('Object-Oriented'), `Moodle's most recently accessed course should be first, got ${$('.bm-course').textContent}`);
         const imgs = $$('.bm-course-img');
         expect(imgs.length === 1, `only the safe data: image should be kept, got ${imgs.length}`);
         expect(css(imgs[0], 'display') === 'block', 'Pop! should show course images');
+      });
+      await check('a course you just opened jumps to the front', async () => {
+        await BM.recent.visit(103);
+        BM.home.visits = await BM.recent.all();
+        BM.home.renderCourses((await BM.store.get('courses-v2')).v);
+        expect($('.bm-course').textContent.includes('Theory of Computation'), 'visited course should be first');
+        expect($$('.bm-course')[1].textContent.includes('Object-Oriented'), 'then Moodle order');
       });
       await check('hero: what is due, the next deadline and a ticking countdown', async () => {
         await until(() => $('.bm-hero:not([hidden]) .bm-hero-count'), 'hero');
@@ -151,13 +160,26 @@
         await until(() => !$('.bm-reveal'), 'reveal to finish');
         expect($$('.bm-section').every((sec) => css(sec, 'opacity') === '1'), 'every section should end at full opacity');
       });
-      await check('Slides chip shows only lecture slides', async () => {
-        $('.bm-chip[data-chip="slides"]').click();
-        const shown = $$('.bm-item').filter((li) => !li.hidden).map((li) => li.textContent);
-        expect(shown.length === 2, `expected 2 slide decks, got ${shown.length}`);
-        expect(shown.every((t) => /Lecture \d slides/.test(t)), 'only "Lecture N slides" should show');
-        $('.bm-chip[data-chip="all"]').click();
-        expect($$('.bm-item').every((li) => !li.hidden), 'All shows everything again');
+      await check('Weeks view: latest weeks open, General collapsed, your choices remembered', async () => {
+        const folded = $$('.bm-section').map((sec) => sec.classList.contains('is-collapsed'));
+        expect(folded.join() === 'true,false,false', `General collapsed, Week 1 and 2 open; got ${folded.join()}`);
+        $$('.bm-section-head')[1].click();
+        expect($$('.bm-section')[1].classList.contains('is-collapsed'), 'clicking Week 1 collapses it');
+        expect(JSON.parse(localStorage.getItem('bm:fold:101'))['1001'] === true, 'the choice is saved for next time');
+        $$('.bm-section-head')[1].click();
+      });
+      await check('Slides & files: only material, each week split into Slides then Files', async () => {
+        $('.bm-chip[data-chip="materials"]').click();
+        const shown = $$('.bm-item').filter((li) => !li.hidden).map((li) => li.querySelector('.bm-item-name').textContent);
+        expect(shown.sort().join('|') === 'Lab sheet 1|Lecture 1 slides|Lecture 2 slides|Module handbook|Starter code', `got ${shown.join('|')}`);
+        const week1 = $$('.bm-section')[1];
+        const top = (sel) => [...week1.querySelectorAll(sel)].find((e) => !e.hidden).getBoundingClientRect().top;
+        const order = [top('.bm-subhead[data-group="slides"]'), top('[data-slides="1"]'), top('.bm-subhead[data-group="files"]'), top('.bm-item[data-slides="0"][data-cat="files"]')];
+        expect(order.every((y, i) => !i || y > order[i - 1]), 'Slides heading, slides, Files heading, files, in that order');
+        expect(getComputedStyle(week1.querySelector('.bm-items')).display !== 'none', 'collapsed weeks still show their material');
+        $('.bm-chip[data-chip="weeks"]').click();
+        expect($$('.bm-subhead').every((e) => e.hidden), 'subheadings only in Slides & files');
+        expect($$('.bm-item').every((li) => !li.hidden), 'Weeks shows everything again');
       });
       await check('filter box narrows the list', async () => {
         const input = $('#bm-course .bm-input');

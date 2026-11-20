@@ -3,14 +3,18 @@
 var BM = globalThis.BM;
 
 BM.course = {
-  CHIPS: [['all', 'All'], ['slides', 'Slides'], ['files', 'Files'], ['recordings', 'Recordings'], ['assess', 'Assessments'], ['forums', 'Forums']],
+  // "Weeks" is the normal view (every section, the current weeks open). "Slides & files" shows only
+  // course material, each week split into Slides then Files.
+  CHIPS: [['weeks', 'Weeks'], ['materials', 'Slides & files'], ['recordings', 'Recordings'], ['assess', 'Assessments'], ['forums', 'Forums']],
   model: null,
-  filter: { q: '', chip: 'all' },
+  filter: { q: '', chip: 'weeks' },
 
   async init(courseId) {
     const anchor = document.querySelector('#page-content');
     if (!anchor || !courseId) return;
     const h = BM.h;
+    this.courseId = courseId;
+    BM.recent.visit(courseId);
 
     let classic = false;
     try { classic = localStorage.getItem('bm:classicCourse') === '1'; } catch (_) {}
@@ -20,7 +24,7 @@ BM.course = {
     this.input.addEventListener('input', () => { this.filter.q = this.input.value.trim().toLowerCase(); this.applyFilter(); });
     this.chipsEl = h('div', { class: 'bm-chips', role: 'group' },
       this.CHIPS.map(([k, label]) => h('button', {
-        class: 'bm-chip', dataset: { chip: k }, 'aria-pressed': String(k === 'all'),
+        class: 'bm-chip', dataset: { chip: k }, 'aria-pressed': String(k === 'weeks'),
         onclick: () => { this.filter.chip = k; this.applyFilter(); },
       }, label)));
     this.statusEl = h('span', { class: 'bm-muted bm-small' });
@@ -110,7 +114,7 @@ BM.course = {
     this.modeEl.textContent = BM.settings?.aggressive
       ? `Aggressive mode${hidden ? ` · ${hidden} section${hidden > 1 ? 's' : ''} hidden` : ''}` : '';
     if (!sections.length) { this.listEl.replaceChildren(h('p', { class: 'bm-muted' }, 'This course has no content yet.')); return; }
-    const open = new Set([...this.listEl.querySelectorAll('.bm-section.is-collapsed')].map((e) => e.dataset.id));
+    const folded = this.foldState(sections);
 
     const firstPaint = !this.listEl.querySelector('.bm-section');
     this.listEl.replaceChildren(...sections.map((s, i) => {
@@ -119,17 +123,46 @@ BM.course = {
         h('span', { class: 'bm-section-title' }, s.title || `Section ${s.number}`),
         count ? h('span', { class: 'bm-muted bm-small' }, String(count)) : null);
       const sec = h('section', { class: 'bm-section', dataset: { id: s.id }, style: `--c:${BM.colorFor(i)}` },
-        head, h('ul', { class: 'bm-items' }, s.items.map((it) => this.renderItem(it))));
+        head, h('ul', { class: 'bm-items' },
+          h('li', { class: 'bm-subhead', dataset: { group: 'slides' }, hidden: true }, 'Slides'),
+          h('li', { class: 'bm-subhead', dataset: { group: 'files' }, hidden: true }, 'Files'),
+          s.items.map((it) => this.renderItem(it))));
       head.addEventListener('click', () => {
         const c = sec.classList.toggle('is-collapsed');
         head.setAttribute('aria-expanded', String(!c));
+        this.saveFold(s.id, c);
       });
-      if (open.has(s.id)) sec.classList.add('is-collapsed');
+      if (folded.has(s.id)) { sec.classList.add('is-collapsed'); head.setAttribute('aria-expanded', 'false'); }
       return sec;
     }));
     if (firstPaint) BM.reveal(this.listEl.children);
     this.applyFilter();
     if (BM.viewer.isOpen()) BM.viewer.refresh(this.viewables());
+  },
+
+  // Which sections start collapsed. By default the current week and the one before it are open, and
+  // everything else (older weeks, later weeks, General and other admin sections) is collapsed.
+  // Anything you open or close yourself is remembered per course.
+  foldState(sections) {
+    const cd = BM.courseData;
+    const weeks = sections.filter((s) => !cd.isNoise(s));
+    let cur = weeks.findIndex((s) => s.current);
+    if (cur < 0) { // Moodle doesn't mark a current section: use the latest one with files in it
+      for (let i = weeks.length - 1; i >= 0 && cur < 0; i--) if (weeks[i].items.some((it) => cd.category(it) === 'files')) cur = i;
+    }
+    const open = new Set(cur < 0 ? weeks.slice(0, 1).map((s) => s.id) : weeks.slice(Math.max(0, cur - 1), cur + 1).map((s) => s.id));
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(`bm:fold:${this.courseId}`) || '{}'); } catch (_) {}
+    return new Set(sections.filter((s) => (s.id in saved ? saved[s.id] : !open.has(s.id))).map((s) => s.id));
+  },
+
+  saveFold(sectionId, collapsed) {
+    try {
+      const key = `bm:fold:${this.courseId}`;
+      const saved = JSON.parse(localStorage.getItem(key) || '{}');
+      saved[sectionId] = collapsed;
+      localStorage.setItem(key, JSON.stringify(saved));
+    } catch (_) {}
   },
 
   renderItem(it) {
@@ -170,24 +203,30 @@ BM.course = {
   applyFilter() {
     const { q, chip } = this.filter;
     for (const b of this.chipsEl.children) b.setAttribute('aria-pressed', String(b.dataset.chip === chip));
-    const filtering = !!q || chip !== 'all';
+    const filtering = !!q || chip !== 'weeks';
+    const materials = chip === 'materials';
     this.root.classList.toggle('is-filtering', filtering);
+    this.root.classList.toggle('is-materials', materials);
     for (const sec of this.listEl.querySelectorAll('.bm-section')) {
       let shown = 0;
-      for (const li of sec.querySelectorAll('.bm-items > li')) {
+      const groups = { slides: 0, files: 0 };
+      for (const li of sec.querySelectorAll('.bm-items > li:not(.bm-subhead)')) {
         const isLabel = li.classList.contains('bm-label');
-        const chipOk = chip === 'all' || (!isLabel && (chip === 'slides' ? li.dataset.slides === '1' : li.dataset.cat === chip));
+        const chipOk = chip === 'weeks' || (!isLabel && (materials ? li.dataset.cat === 'files' : li.dataset.cat === chip));
         const ok = (!q || li.dataset.text.includes(q)) && chipOk;
         li.hidden = !ok;
         if (ok && !isLabel) shown++;
         if (ok && isLabel && q) shown++;
+        if (ok && materials) groups[li.dataset.slides === '1' ? 'slides' : 'files']++;
       }
+      // In "Slides & files", each week gets a Slides heading and a Files heading (CSS puts slides first).
+      for (const sub of sec.querySelectorAll('.bm-subhead')) sub.hidden = !materials || !groups[sub.dataset.group];
       sec.hidden = filtering && !shown;
     }
   },
 
   async loadDue(courseId) {
-    await BM.store.swr(`due:${courseId}`, 5 * 60 * 1000, () => BM.api.courseDeadlines(courseId), (events) => {
+    await BM.store.swr(`due-v2:${courseId}`, 5 * 60 * 1000, () => BM.api.courseDeadlines(courseId), (events) => {
       const h = BM.h;
       const upcoming = events.slice().sort((a, b) => a.ts - b.ts).slice(0, 4);
       this.dueEl.hidden = !upcoming.length;

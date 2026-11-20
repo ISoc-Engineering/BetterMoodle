@@ -51,8 +51,9 @@ BM.home = {
     setClassic(classic);
 
     const err = (el) => () => el.replaceChildren(h('p', { class: 'bm-muted' }, "Couldn't load this. Try refreshing, or use the classic dashboard."));
-    BM.store.swr('deadlines', 5 * 60 * 1000, () => BM.api.deadlines(), (ev) => this.renderDue(ev), err(this.dueEl));
-    const courses = await BM.store.swr('courses', 60 * 60 * 1000, () => BM.api.courses(), (c) => this.renderCourses(c), err(this.coursesEl));
+    BM.store.swr('deadlines-v2', 5 * 60 * 1000, () => BM.api.deadlines(), (ev) => this.renderDue(ev), err(this.dueEl));
+    this.visits = await BM.recent.all();
+    const courses = await BM.store.swr('courses-v2', 60 * 60 * 1000, () => BM.api.courses(), (c) => this.renderCourses(c), err(this.coursesEl));
 
     // Announcements come from Moodle's forum web services. If UCL doesn't allow those over AJAX,
     // fall back to the forum links Moodle itself prints in the (hidden) stock dashboard blocks.
@@ -93,7 +94,11 @@ BM.home = {
     const h = BM.h;
     if (!courses.length) { this.coursesEl.replaceChildren(h('li', { class: 'bm-muted' }, 'No current courses.')); return; }
     const first = !this.coursesEl.querySelector('.bm-course');
-    const sorted = courses.slice().sort((a, b) => (b.fav - a.fav) || a.name.localeCompare(b.name));
+    // Most recently used on the left: courses you opened with BetterMoodle first (newest visit first),
+    // then the rest in Moodle's last-accessed order.
+    const order = new Map(courses.map((c, i) => [c.id, i]));
+    const v = this.visits || {};
+    const sorted = courses.slice().sort((a, b) => ((v[b.id] || 0) - (v[a.id] || 0)) || (order.get(a.id) - order.get(b.id)));
     this.coursesEl.replaceChildren(...sorted.map((c, i) => {
       const [code, ...rest] = c.name.split(':');
       const hasCode = rest.length && /^[A-Z]{3,5}\d{3,5}/.test(code.trim());

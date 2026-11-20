@@ -1,6 +1,17 @@
 // chrome.storage cache, namespaced per Moodle user so a shared computer never mixes students' data.
 var BM = globalThis.BM;
 
+// Courses you opened, newest first. Kept here (not just Moodle's "last accessed") so the dashboard
+// order updates the moment you visit a course.
+BM.recent = {
+  async visit(courseId) {
+    const v = (await BM.store.get('visits'))?.v || {};
+    v[courseId] = Date.now();
+    await BM.store.set('visits', v);
+  },
+  async all() { return (await BM.store.get('visits'))?.v || {}; },
+};
+
 BM.store = {
   key(k) { return `u${BM.cfg().userId}:${k}`; },
 
