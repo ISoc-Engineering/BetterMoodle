@@ -28,6 +28,14 @@ html.bm #ucl-navbar a, html.bm #ucl-navbar .nav-link, html.bm #ucl-navbar .btn,
 html.bm #ucl-navbar .icon, html.bm #ucl-navbar i { color: var(--bm-text) !important; }
 html.bm #ucl-navbar .navbar-brand img, html.bm #ucl-navbar img.logo,
 html.bm #ucl-navbar a[href$="/my/"] img, html.bm #ucl-navbar .ucl-logo img { filter: invert(1); height: 28px; width: auto; }
+/* UCL's theme sizes its logo itself, so ours needs !important to stick; then centre it in the bar. */
+html.bm #ucl-navbar :is(.navbar-brand, .ucl-logo, a[href$="/my/"]):has(img, svg) {
+  display: flex !important; align-items: center; align-self: center; height: var(--bm-navbar-h);
+  padding-top: 0 !important; padding-bottom: 0 !important; margin-top: 0 !important; margin-bottom: 0 !important;
+}
+html.bm #ucl-navbar :is(.navbar-brand, .ucl-logo, a[href$="/my/"]) :is(img, svg), html.bm #ucl-navbar img.logo {
+  height: 28px !important; max-height: 28px !important; width: auto !important; margin: 0 !important; position: static !important;
+}
 
 /* ---- Page chrome ---- */
 html.bm #ucl-footer, html.bm .footer-popover, html.bm #page-footer { display: none !important; }

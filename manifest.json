@@ -50,6 +50,7 @@
         "src/lib/store.js",
         "src/lib/api.js",
         "src/lib/course-data.js",
+        "src/lib/forum-data.js",
         "src/features/viewer.js",
         "src/features/course.js",
         "src/features/home.js",

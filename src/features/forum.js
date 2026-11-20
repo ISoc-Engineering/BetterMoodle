@@ -1,4 +1,5 @@
 // Course forums as a feed (/mod/forum/index.php?id=<course> and /mod/forum/view.php?id=<cmid>).
+// Data comes from Moodle's forum pages (src/lib/forum-data.js): UCL blocks the forum web services.
 //
 //   Left:  your courses (most recently used first), each with its unread count. Pick one to see its feed.
 //   Main:  the course name, one tab per forum ("All forums" merges them), then a feed of posts:
@@ -51,21 +52,17 @@ BM.forum = {
     const visits = await BM.recent.all();
     const order = new Map(courses.map((c, i) => [c.id, i]));
     this.courses = courses.slice().sort((a, b) => ((visits[b.id] || 0) - (visits[a.id] || 0)) || (order.get(a.id) - order.get(b.id)));
-    const ids = [...new Set([...courses.map((c) => c.id), BM.cfg().courseId].filter(Boolean))];
-    this.allForums = await BM.api.forums(ids);
-
-    // Which course and (optionally) which forum this page is about.
-    let courseId = onIndex ? id : 0;
-    if (!onIndex) {
-      const f = this.allForums.find((x) => (id && x.cmid === id) || (fid && x.id === fid));
-      if (!f) return "this forum isn't in your current courses";
-      courseId = f.course;
-      this.state.forum = f.id;
-    }
+    // Which course this page is about: the address on the index page, Moodle's page data otherwise.
+    const courseId = onIndex ? id : (BM.courseIdFromBody() || BM.cfg().courseId);
+    if (!courseId) return "couldn't tell which course this forum belongs to";
     this.courseId = courseId;
-    this.forums = this.allForums.filter((f) => f.course === courseId)
+    this.forums = (await BM.forumData.forums(courseId))
       .sort((a, b) => (b.type === 'news') - (a.type === 'news') || a.name.localeCompare(b.name));
     if (!this.forums.length) return "Moodle didn't list any forums for this course";
+    if (!onIndex && id) {
+      const f = this.forums.find((x) => x.cmid === id);
+      if (f) this.state.forum = f.id;
+    }
     BM.recent.visit(courseId);
 
     this.build(anchor);
@@ -133,13 +130,13 @@ BM.forum = {
   // Left: courses with forums, newest used first. The current one is highlighted.
   rail() {
     const h = BM.h;
-    const withForums = this.courses.filter((c) => this.allForums.some((f) => f.course === c.id));
+    const withForums = this.courses.slice();
     if (!withForums.some((c) => c.id === this.courseId)) withForums.unshift({ id: this.courseId, name: 'This course' });
     return h('nav', { class: 'bm-forum-rail bm-panel', 'aria-label': 'Courses' },
       h('h2', { class: 'bm-h2' }, 'Forums'),
       h('ul', {}, withForums.map((c, i) => {
         const [code, ...rest] = c.name.split(':');
-        const unread = this.allForums.filter((f) => f.course === c.id).reduce((n, f) => n + f.unread, 0);
+        const unread = c.id === this.courseId ? this.forums.reduce((n, f) => n + f.unread, 0) : 0;
         return h('li', {},
           h('a', { class: 'bm-rail-course', href: `/mod/forum/index.php?id=${c.id}`, style: `--c:${BM.colorFor(i)}`,
             'aria-current': c.id === this.courseId ? 'page' : null },
@@ -166,10 +163,12 @@ BM.forum = {
       tab('all', 'All forums', this.forums.reduce((n, f) => n + f.unread, 0)),
       ...this.forums.map((f) => tab(f.id, f.name, f.unread)));
     // "New post" goes to Moodle's form for the chosen forum (or the first one students can post in).
-    const target = this.forums.find((f) => f.id === this.state.forum) || this.forums.find((f) => f.type !== 'news');
-    this.newPostEl.hidden = !target || (this.state.forum === 'all' && target.type === 'news');
+    // Only forums whose page offers "Add discussion topic" (so not Announcements, for students).
+    const chosen = this.forums.find((f) => f.id === this.state.forum);
+    const target = chosen ? (chosen.postForumId ? chosen : null) : this.forums.find((f) => f.postForumId && f.type !== 'news');
+    this.newPostEl.hidden = !target;
     if (target) {
-      this.newPostEl.href = `/mod/forum/post.php?forum=${target.id}`;
+      this.newPostEl.href = `/mod/forum/post.php?forum=${target.postForumId}`;
       this.newPostEl.textContent = this.state.forum === 'all' ? `New post in ${target.name}` : 'New post';
     }
   },
@@ -186,11 +185,15 @@ BM.forum = {
     const todo = this.forums.filter((f) => this.next.get(f.id) >= 0);
     const pages = await BM.pool(todo, 3, async (f) => {
       const page = this.next.get(f.id);
-      const got = await BM.api.discussions(f.id, page, this.PER_PAGE);
-      this.next.set(f.id, got.length < this.PER_PAGE ? -1 : page + 1);
-      return got.map((d) => ({ ...d, forumId: f.id, forumName: f.name, forumCmid: f.cmid }));
+      const got = await BM.forumData.discussions(f, page);
+      this.next.set(f.id, got.more ? page + 1 : -1);
+      f.unread += got.items.reduce((n, d) => n + d.unread, 0);
+      return got.items.map((d) => ({ ...d, forumId: f.id, forumName: f.name, forumCmid: f.cmid }));
     });
+    // Every forum page failing (rather than one) means something is wrong: let init() show the note.
+    if (todo.length && pages.every((p) => p === undefined)) throw new Error("the forum pages didn't load");
     this.posts.push(...pages.flat().filter(Boolean));
+    this.renderTabs();
     this.moreEl.hidden = ![...this.next.values()].some((n) => n >= 0);
     this.moreEl.disabled = false;
     this.render();
@@ -199,12 +202,12 @@ BM.forum = {
   visible() {
     const { q, show, sort, forum } = this.state;
     const me = BM.cfg().userId;
-    const key = (d) => (sort === 'newest' ? d.created : d.lastTs);
+    const key = (d) => (sort === 'newest' ? d.created || d.lastTs : d.lastTs || d.created) || 0;
     return this.posts
       .filter((d) => forum === 'all' || d.forumId === forum)
       .filter((d) => show === 'all' || (show === 'unread' ? d.unread > 0 : show === 'pinned' ? d.pinned : d.authorId === me))
       .filter((d) => !q || d.search.includes(q))
-      .sort((a, b) => (sort === 'replies' ? (b.replies - a.replies) || (b.lastTs - a.lastTs) : (b.pinned - a.pinned) || (key(b) - key(a))));
+      .sort((a, b) => (sort === 'replies' ? (b.replies - a.replies) || (a.order - b.order) : (b.pinned - a.pinned) || (key(b) - key(a)) || (a.order - b.order)));
   },
 
   render() {
@@ -226,6 +229,54 @@ BM.forum = {
       pinned.length ? h('h3', { class: 'bm-h3' }, 'Pinned') : null, ...pinned.map((d) => this.post(d)),
       pinned.length && rest.length ? h('h3', { class: 'bm-h3' }, 'Latest') : null, ...rest.map((d) => this.post(d)));
     if (first) BM.enter(this.feedEl.querySelectorAll('.bm-post'));
+    this.watch();
+  },
+
+  // Each card's full post (and author photo, date, replies) comes from its discussion page, fetched
+  // when the card scrolls near the screen. The card is then redrawn with everything filled in.
+  watch() {
+    this.io?.disconnect();
+    if (typeof IntersectionObserver !== 'function') return;
+    this.io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        this.io.unobserve(e.target);
+        const d = this.posts.find((x) => String(x.id) === e.target.dataset.id);
+        if (d && !d.loaded) this.fill(d);
+      }
+    }, { rootMargin: '400px 0px' });
+    for (const el of this.feedEl.querySelectorAll('.bm-post:not(.is-loaded)')) this.io.observe(el);
+  },
+
+  async fill(d) {
+    try {
+      const { root, replies } = await BM.forumData.thread(d.id);
+      if (root) {
+        d.postId = root.id;
+        d.message = root.message;
+        d.author = d.author || root.author;
+        d.avatar = d.avatar || root.avatar;
+        d.created = d.created || root.created;
+      }
+      d.thread = replies;
+      d.replies = d.replies || replies.length;
+      const latest = replies.reduce((m, p) => (p.created > (m?.created || 0) ? p : m), null);
+      if (latest) { d.lastTs = d.lastTs || latest.created; d.lastBy = d.lastBy || latest.author; }
+      d.search = `${d.title} ${d.author} ${BM.text(d.message.replace(/<[^>]+>/g, ' '))}`.toLowerCase();
+    } catch (e) {
+      d.failed = true;
+    }
+    d.loaded = true;
+    const old = this.feedEl.querySelector(`.bm-post[data-id="${d.id}"]`);
+    if (!old) return;
+    // If its replies are already open, leave the card alone (redrawing would close them).
+    if (old.querySelector('.bm-post-foot [aria-expanded="true"]')) {
+      old.classList.add('is-loaded');
+      if (!d.failed) old.querySelector('.bm-post-body').replaceChildren(this.body(d.message));
+      if (d.postId && !d.locked) old.querySelector('.bm-post-foot a.bm-post-action')?.setAttribute('href', `/mod/forum/post.php?reply=${d.postId}`);
+      return;
+    }
+    old.replaceWith(this.post(d));
   },
 
   avatar(name, url, small) {
@@ -248,7 +299,9 @@ BM.forum = {
 
   post(d) {
     const h = BM.h;
-    const body = h('div', { class: 'bm-post-body' }, this.body(d.message));
+    const body = h('div', { class: 'bm-post-body' }, d.loaded
+      ? (d.failed ? h('p', { class: 'bm-muted' }, "Couldn't load this post here. ", h('a', { href: d.url }, 'Open it in Moodle')) : this.body(d.message))
+      : h('p', { class: 'bm-post-loading', 'aria-label': 'Loading post' }, h('span', {}), h('span', {}), h('span', {})));
     const more = h('button', { class: 'bm-link-btn bm-post-more', hidden: true, onclick: () => {
       const open = body.classList.toggle('is-open');
       more.textContent = open ? 'Show less' : 'Show more';
@@ -256,7 +309,7 @@ BM.forum = {
     const thread = h('div', { class: 'bm-thread', hidden: true });
     const repliesBtn = h('button', { class: 'bm-post-action', 'aria-expanded': 'false', disabled: !d.replies },
       d.replies ? (d.replies === 1 ? 'View 1 reply' : `View ${d.replies} replies`) : 'No replies yet');
-    const art = h('article', { class: 'bm-post' + (d.unread ? ' is-unread' : '') + (d.pinned ? ' is-pinned' : ''), dataset: { id: d.id } },
+    const art = h('article', { class: 'bm-post' + (d.unread ? ' is-unread' : '') + (d.pinned ? ' is-pinned' : '') + (d.loaded ? ' is-loaded' : ''), dataset: { id: d.id } },
       h('header', { class: 'bm-post-head' },
         this.avatar(d.author, d.avatar),
         h('div', { class: 'bm-post-who' },
@@ -264,7 +317,7 @@ BM.forum = {
           h('span', { class: 'bm-muted bm-small' },
             this.state.forum === 'all' ? h('button', { class: 'bm-post-forum', onclick: () => this.tabsEl.querySelector(`[data-forum="${d.forumId}"]`)?.click() }, d.forumName) : null,
             this.state.forum === 'all' ? ' · ' : null,
-            h('time', { datetime: new Date(d.created * 1000).toISOString(), title: BM.fmtTime(d.created) }, BM.ago(d.created)))),
+            d.created ? h('time', { datetime: new Date(d.created * 1000).toISOString(), title: BM.fmtTime(d.created) }, BM.ago(d.created)) : null)),
         h('div', { class: 'bm-spacer' }),
         d.pinned ? h('span', { class: 'bm-tag' }, 'Pinned') : null,
         d.locked ? h('span', { class: 'bm-tag' }, 'Locked') : null,
@@ -273,9 +326,9 @@ BM.forum = {
       body, more,
       h('footer', { class: 'bm-post-foot' },
         repliesBtn,
-        d.replies ? h('span', { class: 'bm-muted bm-small' }, `Latest from ${d.lastBy}, ${BM.ago(d.lastTs)}`) : null,
+        d.replies && d.lastBy && d.lastTs ? h('span', { class: 'bm-muted bm-small' }, `Latest from ${d.lastBy}, ${BM.ago(d.lastTs)}`) : null,
         h('div', { class: 'bm-spacer' }),
-        d.locked ? null : h('a', { class: 'bm-post-action', href: `/mod/forum/post.php?reply=${d.postId}` }, 'Reply'),
+        d.locked ? null : h('a', { class: 'bm-post-action', href: d.postId ? `/mod/forum/post.php?reply=${d.postId}` : d.url }, 'Reply'),
         h('a', { class: 'bm-post-action', href: d.url }, 'Open in Moodle')),
       thread);
     repliesBtn.addEventListener('click', () => this.toggleThread(d, thread, repliesBtn, art));
@@ -293,8 +346,9 @@ BM.forum = {
     if (!thread.dataset.loaded) {
       thread.replaceChildren(BM.h('p', { class: 'bm-muted bm-small' }, 'Loading replies…'));
       try {
-        const posts = await BM.api.discussionPosts(d.id);
-        thread.replaceChildren(this.threadTree(posts.filter((p) => p.id !== d.postId), d));
+        const { root, replies } = await BM.forumData.thread(d.id);
+        if (root && !d.postId) d.postId = root.id;
+        thread.replaceChildren(this.threadTree(replies, d));
         thread.dataset.loaded = '1';
       } catch (e) {
         thread.replaceChildren(BM.h('p', { class: 'bm-muted bm-small' }, "Couldn't load replies. ", BM.h('a', { href: d.url }, 'Open in Moodle')));

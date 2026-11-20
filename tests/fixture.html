@@ -40,6 +40,11 @@ window.chrome = {
 // The page's own localStorage mirrors (bm:off, bm:theme) must not leak between test frames.
 try { localStorage.clear(); } catch (_) {}
 
+// forumpages=fail: the forum pages themselves fail to load (to test the forum view's fallback).
+if (flags.get('forumpages') === 'fail') {
+  const real0 = window.fetch;
+  window.fetch = (url, opts) => /\/mod\/forum\/(view|discuss)\.php/.test(String(url)) ? Promise.resolve(new Response('', { status: 500 })) : real0(url, opts);
+}
 // Optionally break the forum web services so the dashboard's scraping fallback is exercised.
 if (flags.get('forumapi') === 'fail') {
   const real = window.fetch;

@@ -263,28 +263,35 @@
 
     async forum(check) {
       const titles = () => texts('.bm-post-title');
-      await check('a forum opens as a course feed: rail of courses, forum tabs, this forum selected', async () => {
+      const card = (word) => $$('.bm-post').find((p) => p.textContent.includes(word));
+      await check('a forum opens as a course feed, read from the forum pages (forum web services off, like UCL)', async () => {
         await until(() => $$('.bm-post').length === 4, '4 posts');
         expect($('#page-content').classList.contains('bm-replaced'), 'stock forum page hidden');
         expect($('.bm-forum-title').textContent === 'Principles of Programming.', `course title, got ${$('.bm-forum-title').textContent}`);
         expect($('.bm-rail-course[aria-current="page"]')?.textContent.includes('Principles of Programming'), 'this course highlighted in the rail');
-        expect(texts('.bm-forum-tabs .bm-chip').map((t) => t.replace(/\d+$/, '')).join('|') === 'All forums|Announcements|Q&A forum', 'tabs: All, then each forum');
+        expect(texts('.bm-forum-tabs .bm-chip').map((t) => t.replace(/\d+$/, '')).join('|') === 'All forums|Announcements|Q&A forum', `tabs, got ${texts('.bm-forum-tabs .bm-chip').join('|')}`);
         expect($('.bm-forum-tabs [aria-selected="true"]').textContent.startsWith('Q&A forum'), 'opened forum is the selected tab');
+        expect(!$('.bm-forum-note'), 'no error note');
       });
-      await check('posts read like a feed: author, time, title, the post with working links', async () => {
-        const seg = $$('.bm-post').find((p) => p.textContent.includes('Segfault'));
+      await check('list details read from the page: author, replies, unread, pinned', async () => {
+        const seg = card('Segfault');
         expect(seg.querySelector('.bm-post-author').textContent === 'Sam Student', 'author');
         expect(seg.querySelector('.bm-avatar').textContent === 'SS', 'default photo becomes initials');
-        const link = seg.querySelector('.bm-post-body a');
-        expect(link && link.href === 'https://example.org/log' && link.target === '_blank' && link.rel.includes('noopener'), 'links in posts work and open safely in a new tab');
-        await until(() => !seg.querySelector('.bm-post-more').hidden, 'a long post to offer Show more');
-        seg.querySelector('.bm-post-more').click();
-        expect(seg.querySelector('.bm-post-body').classList.contains('is-open'), 'Show more expands it');
-        expect(seg.querySelector('a.bm-post-action[href="/mod/forum/post.php?reply=2020"]'), 'Reply answers the opening post');
+        expect(seg.classList.contains('is-unread') && seg.querySelector('.bm-badge').textContent === '2 new', 'unread count (not mixed up with replies)');
         expect(titles()[0] === 'Coursework FAQ (read first)' && $('.bm-feed > .bm-h3').textContent === 'Pinned', 'pinned first');
       });
+      await check('each post fills in from its discussion page: full text with working links', async () => {
+        await until(() => card('Segfault')?.classList.contains('is-loaded'), 'the post to load');
+        const seg = card('Segfault');
+        const link = seg.querySelector('.bm-post-body a');
+        expect(link && link.href === 'https://example.org/log' && link.target === '_blank' && link.rel.includes('noopener'), 'links in posts work and open safely in a new tab');
+        await until(() => !card('Segfault').querySelector('.bm-post-more').hidden, 'a long post to offer Show more');
+        card('Segfault').querySelector('.bm-post-more').click();
+        expect(card('Segfault').querySelector('.bm-post-body').classList.contains('is-open'), 'Show more expands it');
+        expect(card('Segfault').querySelector('a.bm-post-action[href="/mod/forum/post.php?reply=2020"]'), 'Reply answers the opening post');
+      });
       await check('replies open right under the post, threaded', async () => {
-        const seg = $$('.bm-post').find((p) => p.textContent.includes('Segfault'));
+        const seg = card('Segfault');
         const btn = [...seg.querySelectorAll('.bm-post-action')].find((b) => b.textContent === 'View 3 replies');
         btn.click();
         await until(() => seg.querySelectorAll('.bm-reply').length === 3, '3 replies');
@@ -299,7 +306,7 @@
       await check('show, search and sort', async () => {
         const set = (i, v) => { const s = $$('#bm-forum .bm-select')[i]; s.value = v; s.dispatchEvent(new Event('change')); };
         set(0, 'mine');
-        expect(titles().join('|') === 'Is recursion allowed in Q3?', 'started by me');
+        expect(titles().join('|') === 'Is recursion allowed in Q3?', `started by me, got ${titles().join('|')}`);
         set(0, 'all');
         const input = $('#bm-forum .bm-input');
         input.value = 'maze'; input.dispatchEvent(new Event('input'));
@@ -336,7 +343,7 @@
     },
 
     async forumFails(check) {
-      await check("if Moodle's forum data fails, the page stays usable, says why, and doesn't stick", async () => {
+      await check("if the forum pages fail to load, the Moodle page stays usable, says why, and doesn't stick", async () => {
         await until(() => $('.bm-forum-note'), 'the note');
         expect($('.bm-forum-note').textContent.includes("couldn't show its forum view"), 'explains what happened');
         expect($('.bm-forum-note button').textContent === 'Try again', 'offers Try again');

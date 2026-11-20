@@ -21,10 +21,11 @@ const SCENARIOS = [
   '/my/?check=switchedOff&enabled=0',
   '/course/view.php?id=101&check=course',
   '/course/view.php?id=101&check=coursePopAggressive&theme=pop&aggressive=1',
-  '/mod/forum/view.php?id=2004&check=forum',
-  '/mod/forum/index.php?id=101&check=forumCourse',
-  '/mod/forum/index.php?id=102&check=forumNoPageContent&nocontent=1',
-  '/mod/forum/view.php?id=2004&check=forumFails&forumapi=fail',
+  // forumapi=fail everywhere: like UCL, Moodle's forum web services are switched off.
+  '/mod/forum/view.php?id=2004&check=forum&forumapi=fail',
+  '/mod/forum/index.php?id=101&check=forumCourse&forumapi=fail',
+  '/mod/forum/index.php?id=102&check=forumNoPageContent&nocontent=1&forumapi=fail',
+  '/mod/forum/view.php?id=2004&check=forumFails&forumapi=fail&forumpages=fail',
 ];
 
 const status = document.getElementById('status');

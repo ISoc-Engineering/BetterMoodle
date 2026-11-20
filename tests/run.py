@@ -72,9 +72,22 @@ SECTIONS = [
         ('2006', 'Starter code', 'resource', 'archive')]},
 ]
 
+# Forums per course: every course has an Announcements forum in General; only COMP0002 (101) has Q&A.
+ANNOUNCEMENT_CM = {101: '3009', 102: '3011'}
+FORUM_BY_CM = {'3009': 9, '2004': 10, '3011': 11}
+
+def course_sections(courseid):
+    out = []
+    for s in SECTIONS:
+        cms = [c for c in s['cms'] if c[0] != '2004' or courseid == 101]
+        if s['number'] == 0:
+            cms = cms + [(ANNOUNCEMENT_CM.get(courseid, f'39{courseid}'), 'Announcements', 'forum', None)]
+        out.append({**s, 'cms': cms})
+    return out
+
 def course_state(courseid):
     cms, sections = [], []
-    for s in SECTIONS:
+    for s in course_sections(courseid):
         sections.append({'id': s['id'], 'number': s['number'], 'title': s['title'], 'visible': True, 'current': False,
                          'sectionurl': f'/course/section.php?id={s["id"]}', 'cmlist': [c[0] for c in s['cms']]})
         for cid, name, mod, _ in s['cms']:
@@ -82,7 +95,7 @@ def course_state(courseid):
     return json.dumps({'course': {'id': str(courseid), 'statekey': f'{NOW}_x'}, 'section': sections, 'cm': cms})
 
 def section_page(section_id):
-    s = next((x for x in SECTIONS if x['id'] == section_id), None)
+    s = next((x for x in course_sections(101) if x['id'] == section_id), None)
     rows = ''
     for cid, name, mod, ftype in (s['cms'] if s else []):
         icon = f'/theme/image.php/ucl/core/1/f/{ftype}-24' if ftype else f'/theme/image.php/ucl/{mod}/1/monologo'
@@ -107,7 +120,7 @@ def post(pid, parent, who, ago, text):
     return {'id': pid, 'parentid': parent, 'author': {'fullname': who, 'urls': {'profileimage': ''}},
             'timecreated': NOW - ago, 'message': f'<p>{text}</p>', 'isdeleted': False}
 
-POSTS = {202: [post(2020, 0, 'Sam Student', 3 * 3600, 'My solver segfaults.'),
+POSTS = {202: [post(2020, 0, 'Sam Student', 3 * 3600, 'My solver segfaults on the big maze. Log: <a href="https://example.org/log">crash log</a></p>' + '<p>More detail.</p>' * 12 + '<p>End.'),
                post(2021, 2020, 'TA Priya', 2 * 3600, 'Check your bounds.'),
                post(2022, 2021, 'Sam Student', 3600, 'That was it, thanks!'),
                post(2023, 2020, 'Alex Peer', 1800, 'Same here, see <a href="https://example.org/gdb">this gdb guide</a>.')]}
@@ -123,6 +136,57 @@ DISCUSSIONS = {
         disc(204, 'Lab room change', 'Lecturer', 52, 12 * 86400, 12 * 86400, unread=1),
     ],
 }
+
+# ---------------------------------------------------------------- forum pages (Moodle 4 markup)
+# UCL blocks the forum web services, so BetterMoodle reads these pages instead.
+
+def iso(ts):
+    return time.strftime('%Y-%m-%dT%H:%M:%S+00:00', time.gmtime(ts))
+
+def esc(s):
+    return s.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
+
+def forum_view_page(cmid):
+    fid = FORUM_BY_CM.get(cmid)
+    forum = next((f for f in FORUMS if f['id'] == fid), None)
+    rows = ''
+    for d in sorted(DISCUSSIONS.get(fid, []), key=lambda d: (not d.get('pinned'), -d['timemodified'])):
+        did, who = d['discussion'], d.get('userfullname', '')
+        unread = f'<a href="/mod/forum/discuss.php?d={did}#unread" data-region="unread-count">{d["numunread"]}</a>' if d.get('numunread') else ''
+        pin = '<span class="icon fa fa-thumb-tack" title="Pinned"></span>' if d.get('pinned') else ''
+        rows += (f'<tr class="discussion{" pinned" if d.get("pinned") else ""}" data-region="discussion-list-item" data-discussionid="{did}">'
+                 f'<th class="topic"><a href="https://moodle.example/mod/forum/discuss.php?d={did}" title="{esc(d["name"])}">{esc(d["name"])}</a>{pin}</th>'
+                 f'<td class="author"><div class="d-flex"><img class="userpicture" src="/theme/image.php/ucl/core/1/u/f2" alt="">'
+                 f'<div class="author-info"><div class="text-truncate"><a href="/user/view.php?id={d.get("userid", 0)}">{esc(who)}</a></div>'
+                 f'<div class="author-date"><time datetime="{iso(d.get("created", d["timemodified"]))}">date</time></div></div></div></td>'
+                 f'<td class="text-center"><span>{d.get("numreplies", 0)}</span> {unread}</td>'
+                 f'<td class="text-left"><div class="author-info"><div class="text-truncate">{esc(d.get("usermodifiedfullname", who))}</div>'
+                 f'<a href="/mod/forum/discuss.php?d={did}"><time datetime="{iso(d["timemodified"])}">date</time></a></div></td></tr>')
+    add = f'<a class="btn btn-primary" href="/mod/forum/post.php?forum={fid}">Add discussion topic</a>' if forum and forum['type'] != 'news' else ''
+    return (f'<!doctype html><body id="page-mod-forum-view"><div id="region-main">{add}'
+            f'<table class="table discussion-list"><tbody>{rows}</tbody></table></div></body>')
+
+def post_html(p, children):
+    kids = ''.join(post_html(c, children) for c in children.get(p['id'], []))
+    return (f'<div class="forum-post-container" data-region="post" data-post-id="{p["id"]}" id="p{p["id"]}">'
+            f'<article class="forum-post-core" data-region="post-core"><header><img class="userpicture" src="" alt="">'
+            f'<h3 data-region-content="forum-post-core-subject">Subject</h3>'
+            f'<div>by <a href="/user/view.php?id=1">{esc(p["author"]["fullname"])}</a> - <time datetime="{iso(p["timecreated"])}">date</time></div></header>'
+            f'<div class="post-content-container">{p["message"]}</div></article>'
+            f'<div class="indent" data-region="replies-container">{kids}</div></div>')
+
+def discuss_page(did):
+    posts = POSTS.get(did)
+    if posts is None:  # a discussion with only its opening post
+        d = next((x for ds in DISCUSSIONS.values() for x in ds if x['discussion'] == did), None)
+        if not d:
+            return '<!doctype html><body><div id="region-main">Not found</div></body>'
+        posts = [{'id': did * 10, 'parentid': 0, 'author': {'fullname': d.get('userfullname', '')},
+                  'timecreated': d.get('created', d['timemodified']), 'message': d.get('message', '')}]
+    children = {}
+    for p in posts:
+        children.setdefault(p['parentid'], []).append(p)
+    return '<!doctype html><body id="page-mod-forum-discuss"><div id="region-main">' + ''.join(post_html(p, children) for p in children.get(0, [])) + '</div></body>'
 
 def web_service(method, args):
     if method == 'core_course_get_enrolled_courses_by_timeline_classification':
@@ -171,8 +235,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self.send((ROOT / 'tests' / 'fixture.html').read_text(encoding='utf-8'))
         if url.path == '/course/section.php':
             return self.send(section_page(urllib.parse.parse_qs(url.query).get('id', [''])[0]))
-        if url.path in ('/mod/forum/view.php', '/mod/forum/index.php'):
+        # Opening a forum page shows the fixture; BetterMoodle fetching one gets Moodle's markup.
+        navigating = self.headers.get('Sec-Fetch-Mode') == 'navigate'
+        qs = urllib.parse.parse_qs(url.query)
+        if url.path == '/mod/forum/index.php' or (url.path == '/mod/forum/view.php' and navigating):
             return self.send((ROOT / 'tests' / 'fixture.html').read_text(encoding='utf-8'))
+        if url.path == '/mod/forum/view.php':
+            return self.send(forum_view_page(qs.get('id', [''])[0]))
+        if url.path == '/mod/forum/discuss.php':
+            return self.send(discuss_page(int(qs.get('d', ['0'])[0])))
         if url.path.startswith('/mod/'):
             return self.send('<!doctype html><body id="destination">Moodle activity page</body>')
         if url.path.startswith('/theme/'):
