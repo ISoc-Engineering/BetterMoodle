@@ -58,6 +58,7 @@ BM.home = {
   renderDue(events) {
     const h = BM.h;
     if (!events.length) { this.dueEl.replaceChildren(h('p', { class: 'bm-muted' }, 'Nothing due. 🎉')); return; }
+    const first = !this.dueEl.querySelector('.bm-due-group');
     const groups = new Map(BM.BUCKETS.map((b) => [b, []]));
     for (const e of events.slice().sort((a, b) => a.ts - b.ts)) groups.get(BM.bucket(e.ts)).push(e);
     this.dueEl.replaceChildren(...[...groups].filter(([, l]) => l.length).map(([name, list]) =>
@@ -71,23 +72,26 @@ BM.home = {
                 h('span', { class: 'bm-muted bm-small' }, [this.shortCourse(e.courseName), e.kind ? ' · ' + e.kind : ''])),
               h('span', { class: 'bm-due-side' },
                 h('span', { class: 'bm-due-count' }, BM.countdown(e.ts)),
-                h('span', { class: 'bm-muted bm-small' }, BM.fmtTime(e.ts))))))))));
+                h('span', { class: 'bm-muted bm-small bm-mono' }, BM.fmtTime(e.ts))))))))));
+    if (first) BM.enter(this.dueEl.querySelectorAll('.bm-due-item'));
   },
 
   renderCourses(courses) {
     const h = BM.h;
     if (!courses.length) { this.coursesEl.replaceChildren(h('li', { class: 'bm-muted' }, 'No current courses.')); return; }
+    const first = !this.coursesEl.querySelector('.bm-course');
     const sorted = courses.slice().sort((a, b) => (b.fav - a.fav) || a.name.localeCompare(b.name));
-    this.coursesEl.replaceChildren(...sorted.map((c) => {
+    this.coursesEl.replaceChildren(...sorted.map((c, i) => {
       const [code, ...rest] = c.name.split(':');
       const hasCode = rest.length && /^[A-Z]{3,5}\d{3,5}/.test(code.trim());
       return h('li', {},
-        h('a', { class: 'bm-course', href: `/course/view.php?id=${c.id}` },
+        h('a', { class: 'bm-course', href: `/course/view.php?id=${c.id}`, style: `--c:${BM.colorFor(i)}` },
           c.image ? h('img', { class: 'bm-course-img', src: c.image, alt: '', loading: 'lazy' }) : null,
           h('span', { class: 'bm-course-text' },
             h('span', { class: 'bm-course-code' }, c.fav ? '★ ' : '', hasCode ? code.trim() : c.short),
             h('span', { class: 'bm-course-name' }, hasCode ? rest.join(':').trim() : c.name))));
     }));
+    if (first) BM.enter(this.coursesEl.querySelectorAll('.bm-course'));
   },
 
   renderNews(items) {

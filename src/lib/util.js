@@ -99,6 +99,29 @@ BM.pool = async (items, limit, fn) => {
   return out;
 };
 
+// ---- themes ----
+// Theme names match src/styles/themes/<name>.css. 'minimal' is the default and has no file (tokens.css).
+BM.THEMES = ['minimal', 'soft', 'pop'];
+BM.applyTheme = (name) => {
+  const t = BM.THEMES.includes(name) ? name : 'minimal';
+  document.documentElement.dataset.bmTheme = t;
+  try { localStorage.setItem('bm:theme', t); } catch (_) {} // read by early.js on the next page, before paint
+  return t;
+};
+
+// Per-item colours (Schedule Tracker palette). Themes that colour rows read the inline --c; others ignore it.
+BM.PALETTE = ['#FF5C8A', '#FFD23F', '#3EC1D3', '#7CFF6B', '#FF9F1C', '#B28DFF'];
+BM.colorFor = (i) => BM.PALETTE[Math.abs(Number(i) || 0) % BM.PALETTE.length];
+
+// Staggered entrance on first render. CSS decides whether .bm-enter animates (only the Pop! theme does).
+BM.enter = (els) => {
+  [...els].forEach((el, i) => {
+    el.classList.add('bm-enter');
+    el.style.animationDelay = `${Math.min(i, 12) * 70}ms`;
+    el.addEventListener('animationend', () => { el.classList.remove('bm-enter'); el.style.animationDelay = ''; }, { once: true });
+  });
+};
+
 BM.isTyping = (e) => {
   const t = e.target;
   return t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));

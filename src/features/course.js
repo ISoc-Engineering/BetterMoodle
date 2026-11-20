@@ -112,12 +112,13 @@ BM.course = {
     if (!sections.length) { this.listEl.replaceChildren(h('p', { class: 'bm-muted' }, 'This course has no content yet.')); return; }
     const open = new Set([...this.listEl.querySelectorAll('.bm-section.is-collapsed')].map((e) => e.dataset.id));
 
-    this.listEl.replaceChildren(...sections.map((s) => {
+    const firstPaint = !this.listEl.querySelector('.bm-section');
+    this.listEl.replaceChildren(...sections.map((s, i) => {
       const count = s.items.filter((i) => i.module !== 'label').length;
       const head = h('button', { class: 'bm-section-head', 'aria-expanded': 'true' },
         h('span', { class: 'bm-section-title' }, s.title || `Section ${s.number}`),
         count ? h('span', { class: 'bm-muted bm-small' }, String(count)) : null);
-      const sec = h('section', { class: 'bm-section', dataset: { id: s.id } },
+      const sec = h('section', { class: 'bm-section', dataset: { id: s.id }, style: `--c:${BM.colorFor(i)}` },
         head, h('ul', { class: 'bm-items' }, s.items.map((it) => this.renderItem(it))));
       head.addEventListener('click', () => {
         const c = sec.classList.toggle('is-collapsed');
@@ -126,6 +127,7 @@ BM.course = {
       if (open.has(s.id)) sec.classList.add('is-collapsed');
       return sec;
     }));
+    if (firstPaint) BM.enter(this.listEl.children);
     this.applyFilter();
     if (BM.viewer.isOpen()) BM.viewer.refresh(this.viewables());
   },

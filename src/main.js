@@ -1,4 +1,4 @@
-// Entry point: checks the on/off switch, then routes features by Moodle's <body id>.
+// Entry point: checks the on/off switch and theme, then routes features by Moodle's <body id>.
 var BM = globalThis.BM;
 
 (async () => {
@@ -7,15 +7,21 @@ var BM = globalThis.BM;
 
   // Source of truth is chrome.storage (set by the popup); mirror it to localStorage for early.js.
   let s = {};
-  try { s = await chrome.storage.local.get(['enabled', 'aggressive']); } catch (_) {}
+  try { s = await chrome.storage.local.get(['enabled', 'aggressive', 'theme']); } catch (_) {}
   const enabled = s.enabled !== false;
-  BM.settings = { aggressive: enabled && s.aggressive === true };
+  BM.settings = { aggressive: enabled && s.aggressive === true, theme: s.theme || 'minimal' };
   try { localStorage.setItem('bm:off', enabled ? '0' : '1'); } catch (_) {}
   try {
-    chrome.storage.onChanged.addListener((ch) => { if ('enabled' in ch || 'aggressive' in ch) location.reload(); });
+    chrome.storage.onChanged.addListener((ch) => {
+      if ('enabled' in ch || 'aggressive' in ch) { location.reload(); return; }
+      // Themes are pure CSS, so they switch live without a reload.
+      if ('theme' in ch) { BM.settings.theme = BM.applyTheme(ch.theme.newValue); BM.cursor?.sync(); }
+    });
   } catch (_) {}
-  if (!enabled) { root.classList.remove('bm'); return; }
+  if (!enabled) { root.classList.remove('bm'); delete root.dataset.bmTheme; return; }
   root.classList.add('bm');
+  BM.settings.theme = BM.applyTheme(BM.settings.theme);
+  BM.cursor?.init();
 
   if (!BM.cfg().sesskey || !BM.cfg().userId) return; // logged out: reskin only
 

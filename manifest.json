@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "BetterMoodle (UCL)",
-  "version": "0.1.1",
-  "description": "Unofficial. A minimal reskin of UCL Moodle: deadlines first, every course file on one page, a side viewer and Ctrl+K search.",
+  "version": "0.2.0",
+  "description": "Unofficial. A minimal reskin of UCL Moodle: deadlines first, every course file on one page, a side viewer, Ctrl+K search and three themes.",
   "icons": {
     "16": "icons/16.png",
     "48": "icons/48.png",
@@ -33,7 +33,9 @@
         "src/styles/components/home.css",
         "src/styles/components/course.css",
         "src/styles/components/viewer.css",
-        "src/styles/components/palette.css"
+        "src/styles/components/palette.css",
+        "src/styles/themes/soft.css",
+        "src/styles/themes/pop.css"
       ],
       "run_at": "document_start",
       "all_frames": true
@@ -51,6 +53,7 @@
         "src/features/course.js",
         "src/features/home.js",
         "src/features/palette.js",
+        "src/features/cursor.js",
         "src/main.js"
       ],
       "run_at": "document_idle"
