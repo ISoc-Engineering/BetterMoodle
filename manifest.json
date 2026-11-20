@@ -27,8 +27,13 @@
         "src/early.js"
       ],
       "css": [
-        "src/styles/theme.css",
-        "src/styles/ui.css"
+        "src/styles/tokens.css",
+        "src/styles/base.css",
+        "src/styles/components/common.css",
+        "src/styles/components/home.css",
+        "src/styles/components/course.css",
+        "src/styles/components/viewer.css",
+        "src/styles/components/palette.css"
       ],
       "run_at": "document_start",
       "all_frames": true
