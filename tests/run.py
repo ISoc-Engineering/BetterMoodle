@@ -91,13 +91,24 @@ def section_page(section_id):
                  f'<span class="activitybadge">{badge}</span><span class="resourcelinkdetails">1.2 MB</span></li>')
     return f'<!doctype html><body><ul>{rows}</ul></body>'
 
-FORUMS = [{'id': 9, 'course': 101, 'type': 'news', 'name': 'Announcements'},
-          {'id': 10, 'course': 101, 'type': 'general', 'name': 'Q&A'},
-          {'id': 11, 'course': 102, 'type': 'news', 'name': 'Announcements'}]
+FORUMS = [{'id': 9, 'cmid': 3009, 'course': 101, 'type': 'news', 'name': 'Announcements'},
+          {'id': 10, 'cmid': 2004, 'course': 101, 'type': 'general', 'name': 'Q&amp;A forum', 'unreadpostscount': 3},
+          {'id': 11, 'cmid': 3011, 'course': 102, 'type': 'news', 'name': 'Announcements'}]
+
+def disc(did, name, who, uid, created, last, replies=0, unread=0, pinned=False, lastby=None):
+    return {'discussion': did, 'name': name, 'userfullname': who, 'userid': uid, 'created': NOW - created,
+            'timemodified': NOW - last, 'usermodifiedfullname': lastby or who, 'numreplies': replies,
+            'numunread': unread, 'pinned': pinned, 'locked': False, 'message': f'<p>About {name}</p>'}
 
 DISCUSSIONS = {
     9: [{'discussion': 55, 'name': 'Week one announcement', 'userfullname': 'Course team', 'timemodified': NOW - 7200}],
     11: [{'discussion': 77, 'name': 'Problem class moved', 'userfullname': 'Lecturer', 'timemodified': NOW - 600}],
+    10: [
+        disc(201, 'Coursework FAQ (read first)', 'Course team', 50, 20 * 86400, 20 * 86400, pinned=True),
+        disc(202, 'Segfault in the maze solver', 'Sam Student', 51, 3 * 3600, 1800, replies=4, unread=2, lastby='TA Priya'),
+        disc(203, 'Is recursion allowed in Q3?', 'Me Myself', 7, 2 * 86400, 26 * 3600, replies=1, lastby='Lecturer'),
+        disc(204, 'Lab room change', 'Lecturer', 52, 12 * 86400, 12 * 86400, unread=1),
+    ],
 }
 
 def web_service(method, args):
@@ -145,6 +156,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self.send((ROOT / 'tests' / 'fixture.html').read_text(encoding='utf-8'))
         if url.path == '/course/section.php':
             return self.send(section_page(urllib.parse.parse_qs(url.query).get('id', [''])[0]))
+        if url.path == '/mod/forum/view.php':
+            return self.send((ROOT / 'tests' / 'fixture.html').read_text(encoding='utf-8'))
         if url.path.startswith('/mod/'):
             return self.send('<!doctype html><body id="destination">Moodle activity page</body>')
         if url.path.startswith('/theme/'):

@@ -31,7 +31,7 @@ BM.home = {
         this.coursesEl),
       h('div', { class: 'bm-home-grid' },
         h('section', { class: 'bm-panel', 'aria-labelledby': 'bm-h-due' }, h('h2', { class: 'bm-h2', id: 'bm-h-due' }, 'Due soon'), this.dueEl),
-        h('section', { class: 'bm-panel', 'aria-labelledby': 'bm-h-news' }, h('h2', { class: 'bm-h2', id: 'bm-h-news' }, 'Announcements'), this.newsEl)));
+        h('div', { class: 'bm-home-side' }, this.newsPanel(), this.feedbackPanel())));
     addEventListener('resize', () => this.updateArrows(), { passive: true });
     const root = h('div', { id: 'bm-home', class: 'bm-root' },
       h('div', { class: 'bm-home-top' },
@@ -202,8 +202,39 @@ BM.home = {
     this.prevBtn.hidden = this.nextBtn.hidden = max <= 1; // everything fits: no arrows
   },
 
+  // Announcements: open by default; the heading folds it away (remembered). "All forums" opens the
+  // forum page (forum.js) on your newest course's Announcements forum.
+  newsPanel() {
+    const h = BM.h;
+    let folded = false;
+    try { folded = localStorage.getItem('bm:fold:news') === '1'; } catch (_) {}
+    this.forumsLink = h('a', { class: 'bm-link-btn', hidden: true }, 'All forums');
+    const head = h('button', { class: 'bm-fold-head', 'aria-expanded': String(!folded), 'aria-controls': 'bm-news-body' },
+      h('h2', { class: 'bm-h2', id: 'bm-h-news' }, 'Announcements'));
+    const body = h('div', { id: 'bm-news-body', hidden: folded }, this.newsEl);
+    head.addEventListener('click', () => {
+      const open = head.getAttribute('aria-expanded') !== 'true';
+      head.setAttribute('aria-expanded', String(open));
+      try { localStorage.setItem('bm:fold:news', open ? '0' : '1'); } catch (_) {}
+      if (open) { body.hidden = false; BM.slide(body, true); } else BM.slide(body, false, () => { body.hidden = head.getAttribute('aria-expanded') !== 'true'; });
+    });
+    return h('section', { class: 'bm-panel bm-news-panel', 'aria-labelledby': 'bm-h-news' },
+      h('div', { class: 'bm-panel-head' }, head, h('div', { class: 'bm-spacer' }), this.forumsLink), body);
+  },
+
+  // UCL's My Feedback report: marks and feedback from every module on one page.
+  feedbackPanel() {
+    const h = BM.h;
+    return h('section', { class: 'bm-panel bm-feedback-panel', 'aria-labelledby': 'bm-h-feedback' },
+      h('h2', { class: 'bm-h2', id: 'bm-h-feedback' }, 'Feedback'),
+      h('p', { class: 'bm-muted' }, 'Marks and feedback from all your modules, in one place.'),
+      h('a', { class: 'bm-btn bm-btn-primary', href: '/report/myfeedback/index.php' }, 'Open feedback tracker'));
+  },
+
   renderNews(items) {
     const h = BM.h;
+    const hub = items.find((n) => n.forumUrl);
+    if (hub) { this.forumsLink.href = hub.forumUrl; this.forumsLink.hidden = false; }
     if (!items.length) { this.newsEl.replaceChildren(h('p', { class: 'bm-muted' }, 'No recent announcements.')); return; }
     this.newsEl.replaceChildren(h('ul', { class: 'bm-news-list' }, items.map((n) =>
       h('li', {},

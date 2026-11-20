@@ -35,7 +35,7 @@ BM.courseData = {
   // External links (mod_url) stay normal links so j/k only steps through actual course material.
   viewMode(item) {
     switch (item.module) {
-      case 'page': case 'book': case 'folder': return 'frame';
+      case 'page': case 'book': case 'folder': case 'discussion': return 'frame';
       case 'resource':
         if (!item.type) return 'card';
         return this.PREVIEWABLE.includes(item.type) ? 'frame' : 'card';

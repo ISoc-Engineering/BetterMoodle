@@ -68,6 +68,10 @@ if (location.pathname.startsWith('/my/')) {
     </ul></section>
     <section data-block="recent_activity"><a href="/mod/forum/discuss.php?d=55">Week one announcement</a></section>
     <p id="stock">Stock dashboard</p>`;
+} else if (location.pathname === '/mod/forum/view.php') {
+  document.body.id = 'page-mod-forum-view';
+  document.body.classList.add('course-101');
+  content.innerHTML = '<p id="stock">Stock forum page</p>';
 } else {
   document.body.id = 'page-course-view-topics';
   document.body.classList.add('course-101');

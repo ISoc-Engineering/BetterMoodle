@@ -231,6 +231,37 @@ html.bm[data-bm-theme="pop"] .bm-digit { display: inline-block; white-space: pre
 html.bm[data-bm-theme="pop"] .bm-digit.is-tick { animation: bm-roll .32s var(--bm-ease); }
 @keyframes bm-roll { from { transform: translateY(-70%); opacity: 0; } }
 
+/* Forum page: big title like the dashboard headline, coloured course groups in the rail,
+ * discussions as cards with a thick left edge (pink when unread). */
+html.bm[data-bm-theme="pop"] .bm-forum-title { font: 900 clamp(2rem, 5vw, 3.4rem) / .95 var(--bm-font-display); letter-spacing: -.035em; text-shadow: 3px 3px 0 #fff; }
+html.bm[data-bm-theme="pop"] .bm-forum-rail { background: #fff; }
+html.bm[data-bm-theme="pop"] .bm-rail-course + .bm-rail-course { border-top-width: 3px; }
+html.bm[data-bm-theme="pop"] .bm-rail-course > summary { font-weight: 800; text-transform: uppercase; font-size: .85rem; letter-spacing: .02em; }
+html.bm[data-bm-theme="pop"] .bm-rail-course > summary::before { color: var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-rail-forum { font-weight: 700; border: 3px solid transparent; }
+html.bm[data-bm-theme="pop"] .bm-rail-forum:hover { background: var(--sun); }
+html.bm[data-bm-theme="pop"] .bm-rail-forum[aria-current="page"] { background: var(--c, var(--hot)); border-color: var(--ink); box-shadow: 3px 3px 0 var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-select { border: 3px solid var(--ink); border-radius: 10px; font-weight: 800; box-shadow: 3px 3px 0 var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-disc-list { gap: 10px; }
+html.bm[data-bm-theme="pop"] .bm-disc {
+  background: #fff; border: 3px solid var(--ink); border-left: 12px solid var(--sky); border-radius: 12px;
+  box-shadow: 4px 4px 0 var(--ink); transition: translate .15s var(--bm-ease), box-shadow .15s;
+}
+html.bm[data-bm-theme="pop"] .bm-disc:hover { background: #fff; translate: -2px -2px; box-shadow: 6px 6px 0 var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-disc.is-unread { border-left-color: var(--hot); }
+html.bm[data-bm-theme="pop"] .bm-disc.is-active { background: var(--sun); border-color: var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-disc-dot { display: none; }
+html.bm[data-bm-theme="pop"] .bm-disc-title { font-weight: 800; }
+html.bm[data-bm-theme="pop"] .bm-disc.is-unread .bm-disc-title { font-weight: 900; }
+html.bm[data-bm-theme="pop"] .bm-badge { background: var(--hot); color: var(--ink); border: 2px solid var(--ink); font-weight: 800; }
+html.bm[data-bm-theme="pop"] .bm-tag { background: var(--sun); color: var(--ink); border: 2px solid var(--ink); font-weight: 800; text-transform: uppercase; }
+html.bm[data-bm-theme="pop"] .bm-disc-group .bm-h3 { margin-bottom: 8px; }
+
+/* Dashboard: Feedback panel and the Announcements fold arrow. */
+html.bm[data-bm-theme="pop"] .bm-fold-head::after { color: var(--ink); font-size: 1rem; }
+html.bm[data-bm-theme="pop"] .bm-feedback-panel { background: var(--sky); }
+html.bm[data-bm-theme="pop"] .bm-feedback-panel .bm-muted { color: var(--ink); font-weight: 700; }
+
 /* Course sections rise into place as you scroll to them (JS: BM.reveal adds .bm-reveal, then .is-in). */
 html.bm[data-bm-theme="pop"] .bm-reveal { opacity: 0; translate: 0 32px; rotate: -1deg; }
 html.bm[data-bm-theme="pop"] .bm-reveal.is-in {
@@ -238,32 +269,27 @@ html.bm[data-bm-theme="pop"] .bm-reveal.is-in {
   transition: opacity .4s ease var(--d, 0s), translate .65s var(--bm-ease) var(--d, 0s), rotate .65s var(--bm-ease) var(--d, 0s);
 }
 
-/* Cursor (src/features/cursor.js): a dot on the pointer plus a lagging ring that wraps around
- * buttons. The system pointer is hidden only while ours is showing (html.bm-cursor-on), and never
- * over text fields, so typing still gets the normal text cursor. */
+/* Cursor (src/features/cursor.js): a 30px ring on the pointer with a dot marking the exact point.
+ * The system pointer is hidden only while ours is showing (html.bm-cursor-on), and never over text
+ * fields, so typing still gets the normal text cursor. */
 html.bm-cursor-on, html.bm-cursor-on * { cursor: none !important; }
 html.bm-cursor-on :is(input:not([type="checkbox"], [type="radio"], [type="button"], [type="submit"], [type="range"]), textarea, [contenteditable=""], [contenteditable="true"]) { cursor: text !important; }
-html.bm[data-bm-theme="pop"] :is(.bm-cursor, .bm-cursor-dot, .bm-cursor-ripple) { position: fixed; top: 0; left: 0; z-index: 99999; pointer-events: none; }
 html.bm[data-bm-theme="pop"] .bm-cursor {
-  box-sizing: border-box; width: 26px; height: 26px; border: 2.5px solid var(--ink); border-radius: 50%;
-  background: rgba(255,210,63,0); opacity: 0; will-change: transform, width, height;
-  transition: opacity .2s, background-color .2s, border-width .2s, scale .15s var(--bm-ease);
+  position: fixed; top: 0; left: 0; z-index: 99999; width: 30px; height: 30px; margin: -15px 0 0 -15px;
+  pointer-events: none; opacity: 0; transition: opacity .2s;
+}
+html.bm[data-bm-theme="pop"] .bm-cursor::before {
+  content: ""; display: block; width: 100%; height: 100%; box-sizing: border-box; border: 2.5px solid var(--ink); border-radius: 50%;
+  background: rgba(255,210,63,0); transition: transform .2s var(--bm-ease), background .2s;
+}
+html.bm[data-bm-theme="pop"] .bm-cursor::after { /* the exact point */
+  content: ""; position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px;
+  border-radius: 50%; background: var(--ink); box-shadow: 0 0 0 1.5px #fff;
 }
 html.bm[data-bm-theme="pop"] .bm-cursor.is-on { opacity: 1; }
-html.bm[data-bm-theme="pop"] .bm-cursor.is-hot { background: rgba(255,210,63,.45); }
-html.bm[data-bm-theme="pop"] .bm-cursor.is-snap { background: rgba(255,210,63,.28); border-width: 3px; }
-html.bm[data-bm-theme="pop"] .bm-cursor.is-down { scale: .88; background: rgba(255,92,138,.45); }
-html.bm[data-bm-theme="pop"] .bm-cursor-dot {
-  width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: var(--ink);
-  box-shadow: 0 0 0 1.5px #fff; opacity: 0; transition: opacity .2s;
-}
-html.bm[data-bm-theme="pop"] .bm-cursor-dot.is-on { opacity: 1; }
-html.bm[data-bm-theme="pop"] .bm-cursor-ripple {
-  width: 26px; height: 26px; margin: -13px 0 0 -13px; border: 2.5px solid var(--hot); border-radius: 50%;
-  animation: bm-ripple .45s cubic-bezier(0, 0, .2, 1) forwards;
-}
-@keyframes bm-ripple { from { scale: .4; opacity: 1; } to { scale: 2.2; opacity: 0; } }
-html.bm:not([data-bm-theme="pop"]) :is(.bm-cursor, .bm-cursor-dot, .bm-cursor-ripple) { display: none; }
+html.bm[data-bm-theme="pop"] .bm-cursor.is-hot::before { transform: scale(1.5); background: rgba(255,210,63,.5); }
+html.bm[data-bm-theme="pop"] .bm-cursor.is-down::before { transform: scale(.75); background: rgba(255,92,138,.6); }
+html.bm:not([data-bm-theme="pop"]) .bm-cursor { display: none; }
 
 @keyframes bm-pop { from { opacity: 0; transform: translateY(24px) rotate(-2deg) scale(.95); } to { opacity: 1; transform: none; } }
 @keyframes bm-wipe { from { clip-path: inset(-12px 100% -12px -12px); } to { clip-path: inset(-12px -12px -12px -12px); } }
@@ -282,6 +308,6 @@ html.bm:not([data-bm-theme="pop"]) :is(.bm-cursor, .bm-cursor-dot, .bm-cursor-ri
   html.bm[data-bm-theme="pop"] *, html.bm[data-bm-theme="pop"] *::before, html.bm[data-bm-theme="pop"] *::after {
     animation: none !important; transition: none !important;
   }
-  html.bm[data-bm-theme="pop"] :is(.bm-cursor, .bm-cursor-dot, .bm-cursor-ripple) { display: none; }
+  html.bm[data-bm-theme="pop"] .bm-cursor { display: none; }
   html.bm[data-bm-theme="pop"] .bm-reveal { opacity: 1; translate: none; rotate: none; }
 }

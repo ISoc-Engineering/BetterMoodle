@@ -63,12 +63,15 @@ html.bm .bm-root:not(.is-filtering) .bm-section.is-collapsed .bm-items { display
 html.bm .bm-items { list-style: none; margin: 0; padding: 0 var(--bm-section-pad); }
 html.bm .bm-items > li[hidden] { display: none; }
 
-/* "Slides & files": inside each week, the Slides heading and slides come first, then Files. */
-html.bm .bm-root.is-materials .bm-items { display: flex; flex-direction: column; }
-html.bm .bm-root.is-materials .bm-items > li { order: 3; }
-html.bm .bm-root.is-materials .bm-items > .bm-subhead[data-group="slides"] { order: 0; }
-html.bm .bm-root.is-materials .bm-items > .bm-item[data-slides="1"] { order: 1; }
-html.bm .bm-root.is-materials .bm-items > .bm-subhead[data-group="files"] { order: 2; }
+/* Inside each week: text blocks first, then the Slides heading and slides, Files, then Activities. */
+html.bm .bm-items { display: flex; flex-direction: column; }
+html.bm .bm-items > li { order: 6; }
+html.bm .bm-items > .bm-label { order: 0; }
+html.bm .bm-items > .bm-subhead[data-group="slides"] { order: 1; }
+html.bm .bm-items > .bm-item[data-slides="1"] { order: 2; }
+html.bm .bm-items > .bm-subhead[data-group="files"] { order: 3; }
+html.bm .bm-items > .bm-item[data-slides="0"][data-cat="files"] { order: 4; }
+html.bm .bm-items > .bm-subhead[data-group="other"] { order: 5; }
 html.bm .bm-subhead {
   padding: 10px 0 4px; font: var(--bm-weight-head) .75rem var(--bm-font-mono); color: var(--bm-muted); letter-spacing: .04em;
 }

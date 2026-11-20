@@ -1,0 +1,67 @@
+/* Forum page (src/features/forum.js). Tokens only; Pop! adds its personality in themes/pop.css. */
+
+html.bm #bm-forum { margin-top: 20px; }
+html.bm .bm-forum-top { display: flex; margin-bottom: 12px; }
+html.bm .bm-forum-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 24px; align-items: start; }
+html.bm .bm-forum-layout[hidden] { display: none; }
+@media (max-width: 860px) { html.bm .bm-forum-layout { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---- Left rail: forums by course ---- */
+html.bm .bm-forum-rail { position: sticky; top: calc(var(--bm-navbar-h) + 16px); max-height: calc(100vh - var(--bm-navbar-h) - 32px); overflow: auto; }
+html.bm .bm-rail-course + .bm-rail-course { border-top: var(--bm-border) solid var(--bm-line); }
+html.bm .bm-rail-course > summary {
+  display: flex; align-items: center; gap: 8px; padding: 9px 0; cursor: pointer; list-style: none;
+  font-weight: var(--bm-weight-strong); color: var(--bm-text);
+}
+html.bm .bm-rail-course > summary::-webkit-details-marker { display: none; }
+html.bm .bm-rail-course > summary::before { content: "\25BE"; font-size: .75rem; color: var(--bm-muted); transition: rotate .2s var(--bm-ease); }
+html.bm .bm-rail-course:not([open]) > summary::before { rotate: -90deg; }
+html.bm .bm-rail-course-name { flex: 1; min-width: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+html.bm .bm-rail-course ul { list-style: none; margin: 0 0 8px; padding: 0 0 0 16px; }
+html.bm .bm-rail-forum {
+  display: flex; align-items: center; gap: 8px; padding: 6px 8px; margin: 1px 0; border-radius: var(--bm-radius-sm);
+  color: var(--bm-text); text-decoration: none;
+}
+html.bm .bm-rail-forum > span:first-child { flex: 1; min-width: 0; }
+html.bm .bm-rail-forum:hover { background: var(--bm-bg-soft); text-decoration: none; color: var(--bm-text); }
+html.bm .bm-rail-forum[aria-current="page"] { background: var(--bm-accent-soft); font-weight: var(--bm-weight-strong); }
+
+/* ---- Main: header, toolbar, discussions ---- */
+html.bm .bm-forum-head { display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+html.bm .bm-forum-titles { min-width: 0; }
+html.bm .bm-forum-title {
+  margin: 0; font: var(--bm-weight-head) clamp(1.5rem, 3.4vw, 2.2rem) / 1.08 var(--bm-font-display);
+  letter-spacing: -.02em; text-transform: var(--bm-case-head); overflow-wrap: anywhere;
+}
+html.bm .bm-forum-titles p { margin: 4px 0 0; }
+html.bm .bm-select {
+  font: var(--bm-weight-strong) .85rem var(--bm-font); color: var(--bm-text); background: var(--bm-surface);
+  border: var(--bm-border) solid var(--bm-line); border-radius: var(--bm-radius-sm); padding: 5px 8px; cursor: pointer;
+}
+html.bm .bm-disc-group { margin-top: 18px; }
+html.bm .bm-disc-group:first-child { margin-top: 6px; }
+html.bm .bm-disc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+html.bm .bm-disc {
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--bm-radius-sm);
+  color: var(--bm-text); text-decoration: none; border: var(--bm-border) solid transparent;
+}
+html.bm .bm-disc:hover { background: var(--bm-bg-soft); text-decoration: none; color: var(--bm-text); }
+html.bm .bm-disc.is-active { background: var(--bm-accent-soft); border-color: var(--bm-accent); }
+html.bm .bm-disc-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; }
+html.bm .bm-disc.is-unread .bm-disc-dot { background: var(--bm-accent); }
+html.bm .bm-disc-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+html.bm .bm-disc-title { font-weight: var(--bm-weight-strong); overflow-wrap: anywhere; }
+html.bm .bm-disc.is-unread .bm-disc-title { font-weight: var(--bm-weight-head); }
+html.bm .bm-disc-side { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; }
+html.bm .bm-disc-replies { display: flex; align-items: center; gap: 6px; font-weight: var(--bm-weight-strong); white-space: nowrap; }
+html.bm .bm-badge {
+  flex: none; padding: 1px 7px; border-radius: var(--bm-radius-pill); background: var(--bm-accent); color: var(--bm-on-accent);
+  font: var(--bm-weight-head) .72rem var(--bm-font-mono); white-space: nowrap;
+}
+html.bm .bm-tag {
+  margin-left: 8px; padding: 1px 6px; border: var(--bm-border) solid var(--bm-line); border-radius: var(--bm-radius-sm);
+  font: var(--bm-weight-strong) .7rem var(--bm-font-mono); color: var(--bm-muted); vertical-align: 2px;
+}
+html.bm .bm-forum-empty { padding: 24px 0; }
+html.bm .bm-forum-more { margin-top: 14px; }
+@media (max-width: 560px) { html.bm .bm-disc-side { display: none; } }

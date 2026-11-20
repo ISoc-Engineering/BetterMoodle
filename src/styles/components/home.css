@@ -131,3 +131,15 @@ html.bm .bm-toast-btn { flex: none; padding: 0; border: 0; background: none; col
 
 /* Confetti from BM.burst: Pop! only. */
 html.bm .bm-burst { display: none; }
+
+/* ---- Right column: Announcements (folds) and Feedback ---- */
+html.bm .bm-home-side { display: grid; gap: 24px; align-content: start; min-width: 0; }
+html.bm .bm-panel-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+html.bm .bm-panel-head .bm-h2 { margin: 0; }
+html.bm .bm-fold-head { display: flex; align-items: center; gap: 8px; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; text-align: left; }
+html.bm .bm-fold-head::after {
+  content: "\25BE"; font-size: .85rem; color: var(--bm-muted); transition: rotate .25s var(--bm-ease);
+}
+html.bm .bm-fold-head[aria-expanded="false"]::after { rotate: -90deg; }
+html.bm .bm-news-panel:has(.bm-fold-head[aria-expanded="false"]) .bm-panel-head { margin-bottom: 0; }
+html.bm .bm-feedback-panel p { margin: 0 0 14px; }

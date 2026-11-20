@@ -32,6 +32,7 @@
         "src/styles/components/common.css",
         "src/styles/components/home.css",
         "src/styles/components/course.css",
+        "src/styles/components/forum.css",
         "src/styles/components/viewer.css",
         "src/styles/components/palette.css",
         "src/styles/themes/soft.css",
@@ -52,6 +53,7 @@
         "src/features/viewer.js",
         "src/features/course.js",
         "src/features/home.js",
+        "src/features/forum.js",
         "src/features/palette.js",
         "src/features/cursor.js",
         "src/main.js"

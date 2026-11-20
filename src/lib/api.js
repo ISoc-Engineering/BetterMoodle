@@ -61,9 +61,44 @@ BM.api = {
         courseId: Number(f.course),
         courseName: names.get(Number(f.course)) || '',
         url: `/mod/forum/discuss.php?d=${encodeURIComponent(x.discussion)}`,
+        forumUrl: f.cmid ? `/mod/forum/view.php?id=${f.cmid}` : '',
       }));
     });
     return lists.flat().filter(Boolean).sort((a, b) => b.ts - a.ts);
+  },
+
+  // Every forum in these courses. unread is Moodle's unread post count (0 if tracking is off).
+  async forums(courseIds) {
+    if (!courseIds.length) return [];
+    const fs = await this.call('mod_forum_get_forums_by_courses', { courseids: courseIds });
+    return fs.map((f) => ({
+      id: Number(f.id), cmid: Number(f.cmid), course: Number(f.course), type: f.type,
+      name: BM.text(f.name), unread: Number(f.unreadpostscount) || 0,
+    }));
+  },
+
+  // One page of a forum's discussions (Moodle's default order: pinned, then latest post first).
+  async discussions(forumid, page = 0, perpage = 100) {
+    const d = await this.call('mod_forum_get_forum_discussions', { forumid, page, perpage });
+    return (d.discussions || []).map((x) => {
+      const title = BM.text(x.name || x.subject);
+      const author = BM.text(x.userfullname || '');
+      return {
+        id: Number(x.discussion),
+        title,
+        author,
+        authorId: Number(x.userid),
+        created: x.created || x.timemodified,
+        lastTs: x.timemodified || x.modified || x.created,
+        lastBy: BM.text(x.usermodifiedfullname || author),
+        replies: Number(x.numreplies) || 0,
+        unread: Number(x.numunread) || 0,
+        pinned: !!x.pinned,
+        locked: !!x.locked,
+        url: `/mod/forum/discuss.php?d=${encodeURIComponent(x.discussion)}`,
+        search: `${title} ${author} ${BM.text(x.message || '')}`.toLowerCase(),
+      };
+    });
   },
 
   mapEvent(e) {

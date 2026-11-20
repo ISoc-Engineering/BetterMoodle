@@ -3,8 +3,8 @@
 var BM = globalThis.BM;
 
 BM.course = {
-  // "Weeks" is the normal view (every section, the current weeks open). "Slides & files" shows only
-  // course material, each week split into Slides then Files.
+  // "Weeks" is the normal view: every section (the current weeks open), each split into Slides, Files,
+  // then Activities. "Slides & files" shows only course material, split the same way.
   CHIPS: [['weeks', 'Weeks'], ['materials', 'Slides & files'], ['recordings', 'Recordings'], ['assess', 'Assessments'], ['forums', 'Forums']],
   model: null,
   filter: { q: '', chip: 'weeks' },
@@ -131,6 +131,7 @@ BM.course = {
         head, h('ul', { class: 'bm-items' },
           h('li', { class: 'bm-subhead', dataset: { group: 'slides' }, hidden: true }, 'Slides'),
           h('li', { class: 'bm-subhead', dataset: { group: 'files' }, hidden: true }, 'Files'),
+          h('li', { class: 'bm-subhead', dataset: { group: 'other' }, hidden: true }, 'Activities'),
           s.items.map((it) => this.renderItem(it))));
       head.addEventListener('click', () => {
         const collapsing = head.getAttribute('aria-expanded') === 'true';
@@ -219,7 +220,7 @@ BM.course = {
     this.root.classList.toggle('is-materials', materials);
     for (const sec of this.listEl.querySelectorAll('.bm-section')) {
       let shown = 0;
-      const groups = { slides: 0, files: 0 };
+      const groups = { slides: 0, files: 0, other: 0 };
       for (const li of sec.querySelectorAll('.bm-items > li:not(.bm-subhead)')) {
         const isLabel = li.classList.contains('bm-label');
         const chipOk = chip === 'weeks' || (!isLabel && (materials ? li.dataset.cat === 'files' : li.dataset.cat === chip));
@@ -227,10 +228,12 @@ BM.course = {
         li.hidden = !ok;
         if (ok && !isLabel) shown++;
         if (ok && isLabel && q) shown++;
-        if (ok && materials) groups[li.dataset.slides === '1' ? 'slides' : 'files']++;
+        if (ok && !isLabel) groups[li.dataset.slides === '1' ? 'slides' : li.dataset.cat === 'files' ? 'files' : 'other']++;
       }
-      // In "Slides & files", each week gets a Slides heading and a Files heading (CSS puts slides first).
-      for (const sub of sec.querySelectorAll('.bm-subhead')) sub.hidden = !materials || !groups[sub.dataset.group];
+      // Weeks and "Slides & files" split each week under Slides / Files / Activities headings
+      // (CSS orders the items). A heading only shows when its group has something in it.
+      const grouped = chip === 'weeks' || materials;
+      for (const sub of sec.querySelectorAll('.bm-subhead')) sub.hidden = !grouped || !groups[sub.dataset.group];
       sec.hidden = filtering && !shown;
     }
   },

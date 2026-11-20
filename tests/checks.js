@@ -94,6 +94,21 @@
         await BM.done.queue;
         expect(!(await BM.done.all())[903], 'no longer remembered as done');
       });
+      await check('Announcements fold away and back; All forums and Feedback links', async () => {
+        const head = $('.bm-news-panel .bm-fold-head');
+        expect(head.getAttribute('aria-expanded') === 'true' && !$('#bm-news-body').hidden, 'Announcements start open');
+        head.click();
+        await until(() => $('#bm-news-body').hidden, 'Announcements to fold away');
+        expect(localStorage.getItem('bm:fold:news') === '1', 'the choice is remembered');
+        head.click();
+        await until(() => !$('#bm-news-body').hidden, 'Announcements to open again');
+        await until(() => !$('.bm-news-panel .bm-link-btn').hidden, 'All forums link');
+        expect($('.bm-news-panel .bm-link-btn').getAttribute('href') === '/mod/forum/view.php?id=3011', 'All forums opens the forum page (newest announcement first)');
+        const fb = $('.bm-feedback-panel a');
+        expect(fb && fb.getAttribute('href') === '/report/myfeedback/index.php', 'Feedback opens the feedback tracker');
+        expect(fb.closest('.bm-home-side') === $('.bm-news-panel').closest('.bm-home-side') &&
+          ($('.bm-news-panel').compareDocumentPosition($('.bm-feedback-panel')) & Node.DOCUMENT_POSITION_FOLLOWING), 'Feedback sits below Announcements');
+      });
       await check('classic dashboard toggle swaps views', async () => {
         const btn = $('.bm-home-top .bm-link-btn');
         btn.click();
@@ -125,13 +140,14 @@
           const move = (el) => {
             const b = el.getBoundingClientRect();
             el.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: b.left + 5, clientY: b.top + 5 }));
+            return b;
           };
-          move($('.bm-strip-btn:not([disabled])'));
-          expect(html.classList.contains('bm-cursor-on') && $('.bm-cursor-dot').classList.contains('is-on'), 'our cursor shows and the system pointer is hidden');
-          expect($('.bm-cursor').classList.contains('is-snap'), 'ring snaps around a small button');
-          await until(() => Math.abs($('.bm-cursor').getBoundingClientRect().width - $('.bm-strip-btn:not([disabled])').getBoundingClientRect().width - 10) < 3, 'ring to wrap the button');
-          move($('.bm-due-item'));
-          expect(!$('.bm-cursor').classList.contains('is-snap') && $('.bm-cursor').classList.contains('is-hot'), 'big rows do not snap, the ring just fills');
+          const b = move($('.bm-due-item'));
+          const ring = $('.bm-cursor');
+          expect(html.classList.contains('bm-cursor-on') && ring.classList.contains('is-on'), 'our cursor shows and the system pointer is hidden');
+          expect(ring.style.transform.includes(`${b.left + 5}px`), 'the ring sits exactly on the pointer (no lag)');
+          expect(ring.classList.contains('is-hot'), 'the ring grows over clickable things');
+          expect(Math.round(ring.getBoundingClientRect().width) === 30, `ring is 30px, got ${ring.getBoundingClientRect().width}`);
           const input = document.createElement('input');
           document.body.append(input);
           move(input);
@@ -208,6 +224,16 @@
         $('.bm-chip[data-chip="weeks"]').click();
         await until(() => at('weeks'), 'highlight back under Weeks');
       });
+      await check('Weeks view: each week split into Slides, Files, Activities', async () => {
+        const week1 = $$('.bm-section')[1];
+        const shownHeads = [...week1.querySelectorAll('.bm-subhead')].filter((e) => !e.hidden).map((e) => e.textContent);
+        expect(shownHeads.join('|') === 'Slides|Files|Activities', `got ${shownHeads.join('|')}`);
+        const y = (sel) => week1.querySelector(sel).getBoundingClientRect().top;
+        const order = [y('.bm-subhead[data-group="slides"]'), y('[data-slides="1"]'), y('.bm-subhead[data-group="files"]'),
+          y('.bm-item[data-slides="0"][data-cat="files"]'), y('.bm-subhead[data-group="other"]'), y('.bm-item[data-cat="assess"]')];
+        expect(order.every((v, i) => !i || v > order[i - 1]), 'Slides, then Files, then Activities');
+        expect(!$$('.bm-section')[2].querySelector('.bm-subhead[data-group="other"]').hidden === false, 'no Activities heading in a week without activities');
+      });
       await check('Slides & files: only material, each week split into Slides then Files', async () => {
         $('.bm-chip[data-chip="materials"]').click();
         const shown = $$('.bm-item').filter((li) => !li.hidden).map((li) => li.querySelector('.bm-item-name').textContent);
@@ -218,7 +244,7 @@
         expect(order.every((y, i) => !i || y > order[i - 1]), 'Slides heading, slides, Files heading, files, in that order');
         expect(getComputedStyle(week1.querySelector('.bm-items')).display !== 'none', 'collapsed weeks still show their material');
         $('.bm-chip[data-chip="weeks"]').click();
-        expect($$('.bm-subhead').every((e) => e.hidden), 'subheadings only in Slides & files');
+        expect(!$$('.bm-section')[1].querySelector('.bm-subhead[data-group="other"]').hidden, 'Weeks shows Activities again');
         expect($$('.bm-item').every((li) => !li.hidden), 'Weeks shows everything again');
       });
       await check('filter box narrows the list', async () => {
@@ -229,6 +255,47 @@
         expect(shown.length === 1 && shown[0].textContent.includes('Starter code'), 'only Starter code should match');
         input.value = '';
         input.dispatchEvent(new Event('input'));
+      });
+    },
+
+    async forum(check) {
+      await check('forum page replaces the stock one, with a rail of forums by course', async () => {
+        await until(() => $$('.bm-disc').length === 4, '4 discussions');
+        expect($('#page-content').classList.contains('bm-replaced'), 'stock forum page hidden');
+        expect($('.bm-forum-title').textContent === 'Q&A forum.', `title, got ${$('.bm-forum-title').textContent}`);
+        const current = $('.bm-rail-forum[aria-current="page"]');
+        expect(current && current.textContent.startsWith('Q&A forum') && current.closest('details').open, 'this forum highlighted, its course open');
+        expect($$('.bm-rail-course').length === 2, 'both courses with forums listed');
+        expect($('.bm-rail-course:not([open])'), 'other courses folded');
+      });
+      await check('discussions grouped: Pinned, Today, Yesterday, This month', async () => {
+        expect(texts('.bm-disc-group .bm-h3').join('|') === 'Pinned|Today|Yesterday|This month', `got ${texts('.bm-disc-group .bm-h3').join('|')}`);
+        expect($$('.bm-disc.is-unread').length === 2, 'two discussions have unread posts');
+        expect($('.bm-forum-titles').textContent.includes('4 discussions, 2 unread'), 'count line');
+      });
+      await check('filters, search and sort', async () => {
+        const titles = () => texts('.bm-disc-title').map((t) => t.replace(/(Pinned|Locked)$/, ''));
+        $('.bm-chip[data-chip="unread"]').click();
+        expect(titles().sort().join('|') === 'Lab room change|Segfault in the maze solver', `unread: ${titles().join('|')}`);
+        $('.bm-chip[data-chip="mine"]').click();
+        expect(titles().join('|') === 'Is recursion allowed in Q3?', 'started by me');
+        $('.bm-chip[data-chip="all"]').click();
+        const input = $('#bm-forum .bm-input');
+        input.value = 'maze'; input.dispatchEvent(new Event('input'));
+        expect(titles().join('|') === 'Segfault in the maze solver', 'search');
+        input.value = ''; input.dispatchEvent(new Event('input'));
+        const sel = $('#bm-forum .bm-select');
+        sel.value = 'replies'; sel.dispatchEvent(new Event('change'));
+        expect(titles()[0] === 'Segfault in the maze solver' && !$('.bm-disc-group .bm-h3'), 'most replies first, no time groups');
+        sel.value = 'activity'; sel.dispatchEvent(new Event('change'));
+      });
+      await check('a discussion opens in the side viewer and is marked read', async () => {
+        const row = $$('.bm-disc').find((r) => r.textContent.includes('Segfault'));
+        row.click();
+        await until(() => html.classList.contains('bm-viewer-open'), 'viewer');
+        expect($('.bm-viewer iframe').getAttribute('src') === '/mod/forum/discuss.php?d=202', 'shows the discussion');
+        expect(!row.classList.contains('is-unread'), 'marked read');
+        BM.viewer.close();
       });
     },
 
