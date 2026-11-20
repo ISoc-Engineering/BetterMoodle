@@ -32,6 +32,16 @@ html.bm .bm-chip {
   background: var(--bm-surface); color: var(--bm-muted); padding: 4px 12px; cursor: pointer;
 }
 html.bm .bm-chip[aria-pressed="true"] { background: var(--bm-chip-on); border-color: var(--bm-chip-on); color: var(--bm-chip-on-text); }
+/* The sliding highlight (course.js movePill) sits behind the chips and takes over the pressed look. */
+html.bm .bm-chips.has-pill { position: relative; }
+html.bm .bm-chips.has-pill .bm-chip { position: relative; z-index: 1; }
+html.bm .bm-chips.has-pill .bm-chip[aria-pressed="true"] { background: transparent; border-color: transparent; box-shadow: none; }
+html.bm .bm-chip-pill {
+  position: absolute; top: 0; left: 0; z-index: 0; box-sizing: border-box; pointer-events: none;
+  background: var(--bm-chip-on); border: var(--bm-border) solid var(--bm-chip-on); border-radius: var(--bm-radius-pill);
+}
+html.bm .bm-chip-pill.is-ready { transition: transform .35s var(--bm-ease), width .35s var(--bm-ease), height .35s var(--bm-ease); }
+@media (prefers-reduced-motion: reduce) { html.bm .bm-chip-pill.is-ready { transition: none; } }
 
 /* ---- Sections ---- */
 html.bm .bm-sections { display: grid; gap: var(--bm-section-gap, 0px); }
@@ -42,8 +52,11 @@ html.bm .bm-section-head {
   text-align: left; cursor: pointer; color: var(--bm-text);
   font: var(--bm-weight-head) 1rem var(--bm-font-display); text-transform: var(--bm-case-head);
 }
-html.bm .bm-section-head::before { content: "\25BE"; color: var(--bm-muted); font-size: .8rem; width: 12px; display: inline-block; }
-html.bm .bm-section.is-collapsed .bm-section-head::before { content: "\25B8"; }
+html.bm .bm-section-head::before {
+  content: "\25BE"; color: var(--bm-muted); font-size: .8rem; width: 12px; display: inline-block; text-align: center;
+  transition: rotate .25s var(--bm-ease);
+}
+html.bm .bm-section-head[aria-expanded="false"]::before { rotate: -90deg; }
 html.bm .bm-root:not(.is-filtering) .bm-section.is-collapsed .bm-items { display: none; }
 
 /* ---- Items ---- */

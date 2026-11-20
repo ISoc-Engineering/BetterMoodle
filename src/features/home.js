@@ -51,6 +51,7 @@ BM.home = {
     setClassic(classic);
 
     const err = (el) => () => el.replaceChildren(h('p', { class: 'bm-muted' }, "Couldn't load this. Try refreshing, or use the classic dashboard."));
+    this.done = await BM.done.all();
     BM.store.swr('deadlines-v2', 5 * 60 * 1000, () => BM.api.deadlines(), (ev) => this.renderDue(ev), err(this.dueEl));
     this.visits = await BM.recent.all();
     const courses = await BM.store.swr('courses-v2', 60 * 60 * 1000, () => BM.api.courses(), (c) => this.renderCourses(c), err(this.coursesEl));
@@ -68,8 +69,10 @@ BM.home = {
     }, (n) => this.renderNews(n), () => this.newsEl.replaceChildren(h('p', { class: 'bm-muted' }, "Couldn't load announcements.")));
   },
 
-  renderDue(events) {
+  renderDue(all) {
     const h = BM.h;
+    this.events = all;
+    const events = all.filter((e) => !this.done?.[e.id]); // ticked off here
     this.renderHero(events);
     if (!events.length) { this.dueEl.replaceChildren(h('p', { class: 'bm-muted' }, 'Nothing due. 🎉')); return; }
     const first = !this.dueEl.querySelector('.bm-due-group');
@@ -79,7 +82,8 @@ BM.home = {
       h('div', { class: 'bm-due-group' + (name === 'Overdue' ? ' is-overdue' : '') },
         h('h3', { class: 'bm-h3' }, name),
         h('ul', { class: 'bm-due-items' }, list.map((e) =>
-          h('li', {},
+          h('li', { class: 'bm-due-row' },
+            this.checkButton(e),
             h('a', { class: 'bm-due-item', href: e.url },
               h('span', { class: 'bm-due-main' },
                 h('span', { class: 'bm-due-name' }, e.name),
@@ -88,6 +92,31 @@ BM.home = {
                 h('span', { class: 'bm-due-count' }, BM.countdown(e.ts)),
                 h('span', { class: 'bm-muted bm-small bm-mono' }, BM.fmtTime(e.ts))))))))));
     if (first) BM.enter(this.dueEl.querySelectorAll('.bm-due-item'));
+  },
+
+  // Tick a deadline off: the circle fills and draws a check, confetti pops (Pop!), the row is struck
+  // through and folds away, and a toast offers Undo. It only hides the item in BetterMoodle.
+  checkButton(e) {
+    const icon = document.createElement('span');
+    icon.className = 'bm-check-icon';
+    icon.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>';
+    const btn = BM.h('button', { class: 'bm-check', type: 'button', title: 'Mark as done (hides it here only)', 'aria-label': `Mark ${e.name} as done` }, icon);
+    btn.addEventListener('click', async (ev) => {
+      ev.preventDefault();
+      const row = btn.closest('li');
+      row.classList.add('is-done');
+      btn.disabled = true;
+      BM.burst(btn);
+      this.done[e.id] = Date.now();
+      BM.done.set(e.id, true);
+      setTimeout(() => BM.slide(row, false, () => this.renderDue(this.events)), 600);
+      BM.toast(`Ticked off ${e.name}`, 'Undo', () => {
+        delete this.done[e.id];
+        BM.done.set(e.id, false);
+        this.renderDue(this.events);
+      });
+    });
+    return btn;
   },
 
   renderCourses(courses) {
@@ -139,7 +168,14 @@ BM.home = {
           h('span', { class: 'bm-hero-next-name' }, next.name),
           h('span', { class: 'bm-muted bm-small' }, this.shortCourse(next.courseName))),
         this.countEl);
-      const update = () => { this.countEl.textContent = BM.clock(next.ts - BM.now()); };
+      // Each digit is its own span so only the ones that change roll in (Pop!), like a flip clock.
+      const update = () => {
+        const str = BM.clock(next.ts - BM.now());
+        const prev = this.countEl.dataset.v || '';
+        if (str.length !== prev.length) this.countEl.replaceChildren(...[...str].map((ch) => h('span', { class: 'bm-digit' }, ch)));
+        else [...str].forEach((ch, i) => { if (ch !== prev[i]) this.countEl.children[i].replaceWith(h('span', { class: 'bm-digit is-tick' }, ch)); });
+        this.countEl.dataset.v = str;
+      };
       update();
       this.tick = setInterval(update, 1000);
     }

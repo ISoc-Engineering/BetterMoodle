@@ -82,6 +82,18 @@
         await until(() => $$('.bm-news-item').length === 2, '2 announcements');
         expect(texts('.bm-news-title')[0] === 'Problem class moved', 'newest announcement should be first');
       });
+      await check('tick off a deadline, then undo it', async () => {
+        const row = $$('.bm-due-row').find((r) => r.textContent.includes('Proofs problem set'));
+        row.querySelector('.bm-check').click();
+        expect(row.classList.contains('is-done'), 'row is marked done straight away');
+        await until(() => !texts('.bm-due-name').includes('Proofs problem set'), 'row to fold away');
+        expect((await BM.done.all())[903], 'remembered as done');
+        await until(() => $('.bm-toast-btn'), 'Undo toast');
+        $('.bm-toast-btn').click();
+        await until(() => texts('.bm-due-name').includes('Proofs problem set'), 'Undo to bring it back');
+        await BM.done.queue;
+        expect(!(await BM.done.all())[903], 'no longer remembered as done');
+      });
       await check('classic dashboard toggle swaps views', async () => {
         const btn = $('.bm-home-top .bm-link-btn');
         btn.click();
@@ -109,6 +121,23 @@
         expect(css(document.body, 'background-image').includes('radial-gradient'), 'Pop! should give dot-paper background');
         const wantsRing = matchMedia('(pointer: fine)').matches && !matchMedia('(prefers-reduced-motion: reduce)').matches;
         expect(!!$('.bm-cursor') === wantsRing, 'cursor ring should exist only with a mouse and motion allowed');
+        if (wantsRing) {
+          const move = (el) => {
+            const b = el.getBoundingClientRect();
+            el.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: b.left + 5, clientY: b.top + 5 }));
+          };
+          move($('.bm-strip-btn:not([disabled])'));
+          expect(html.classList.contains('bm-cursor-on') && $('.bm-cursor-dot').classList.contains('is-on'), 'our cursor shows and the system pointer is hidden');
+          expect($('.bm-cursor').classList.contains('is-snap'), 'ring snaps around a small button');
+          await until(() => Math.abs($('.bm-cursor').getBoundingClientRect().width - $('.bm-strip-btn:not([disabled])').getBoundingClientRect().width - 10) < 3, 'ring to wrap the button');
+          move($('.bm-due-item'));
+          expect(!$('.bm-cursor').classList.contains('is-snap') && $('.bm-cursor').classList.contains('is-hot'), 'big rows do not snap, the ring just fills');
+          const input = document.createElement('input');
+          document.body.append(input);
+          move(input);
+          expect(!html.classList.contains('bm-cursor-on') && getComputedStyle(input).cursor !== 'none', 'over a text box the normal text cursor comes back');
+          input.remove();
+        }
         await chrome.storage.local.set({ theme: 'not-a-theme' });
         expect(html.dataset.bmTheme === 'pop', 'unknown theme should fall back to pop');
         expect(window.notReloaded, 'page should not have reloaded');
@@ -164,9 +193,20 @@
         const folded = $$('.bm-section').map((sec) => sec.classList.contains('is-collapsed'));
         expect(folded.join() === 'true,false,false', `General collapsed, Week 1 and 2 open; got ${folded.join()}`);
         $$('.bm-section-head')[1].click();
-        expect($$('.bm-section')[1].classList.contains('is-collapsed'), 'clicking Week 1 collapses it');
+        expect($$('.bm-section-head')[1].getAttribute('aria-expanded') === 'false', 'the arrow turns straight away');
+        await until(() => $$('.bm-section')[1].classList.contains('is-collapsed'), 'Week 1 to fold away');
         expect(JSON.parse(localStorage.getItem('bm:fold:101'))['1001'] === true, 'the choice is saved for next time');
         $$('.bm-section-head')[1].click();
+        await until(() => !$$('.bm-section')[1].classList.contains('is-collapsed'), 'Week 1 to open again');
+      });
+      await check('the tab highlight slides to the chosen tab', async () => {
+        const pill = $('.bm-chip-pill');
+        const at = (chip) => Math.abs(pill.getBoundingClientRect().left - $(`.bm-chip[data-chip="${chip}"]`).getBoundingClientRect().left) < 2;
+        await until(() => at('weeks'), 'highlight under Weeks');
+        $('.bm-chip[data-chip="forums"]').click();
+        await until(() => at('forums'), 'highlight to slide to Forums');
+        $('.bm-chip[data-chip="weeks"]').click();
+        await until(() => at('weeks'), 'highlight back under Weeks');
       });
       await check('Slides & files: only material, each week split into Slides then Files', async () => {
         $('.bm-chip[data-chip="materials"]').click();

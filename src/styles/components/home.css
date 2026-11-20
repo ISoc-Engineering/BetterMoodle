@@ -98,3 +98,36 @@ html.bm .bm-ping::after {
 }
 @keyframes bm-ping { 75%, 100% { transform: scale(2.6); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { html.bm .bm-ping::after { display: none; } }
+
+/* ---- Tick off a deadline ---- */
+html.bm .bm-due-row { display: flex; align-items: center; gap: 8px; }
+html.bm .bm-due-row > .bm-due-item { flex: 1; min-width: 0; }
+html.bm .bm-check {
+  flex: none; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%; background: none;
+  color: var(--bm-muted); cursor: pointer;
+}
+html.bm .bm-check-icon, html.bm .bm-check svg { display: block; width: 100%; height: 100%; }
+html.bm .bm-check svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+html.bm .bm-check circle { transition: fill .2s; }
+html.bm .bm-check path { stroke-dasharray: 16; stroke-dashoffset: 16; transition: stroke-dashoffset .3s ease, opacity .2s; }
+html.bm .bm-check:hover path, html.bm .bm-check:focus-visible path { stroke-dashoffset: 0; opacity: .4; } /* preview the tick */
+html.bm .bm-due-row.is-done .bm-check { color: var(--bm-accent); }
+html.bm .bm-due-row.is-done .bm-check circle { fill: currentColor; }
+html.bm .bm-due-row.is-done .bm-check path { stroke: var(--bm-on-accent); stroke-dashoffset: 0; opacity: 1; }
+html.bm .bm-due-row.is-done .bm-due-item { opacity: .55; }
+html.bm .bm-due-row.is-done .bm-due-name { text-decoration: line-through; text-decoration-thickness: 2px; }
+@media (prefers-reduced-motion: reduce) { html.bm .bm-check :is(circle, path) { transition: none; } }
+
+/* ---- Toast (BM.toast) ---- */
+html.bm .bm-toast {
+  position: fixed; left: 50%; bottom: 24px; z-index: 99990; translate: -50% 0;
+  display: flex; align-items: center; gap: 14px; max-width: calc(100vw - 32px); padding: 10px 14px;
+  background: var(--bm-text); color: var(--bm-bg); border-radius: var(--bm-radius-sm);
+  font: var(--bm-weight-strong) .9rem var(--bm-font); animation: bm-toast-in .25s ease;
+}
+html.bm .bm-toast-btn { flex: none; padding: 0; border: 0; background: none; color: inherit; font: inherit; font-weight: var(--bm-weight-head); text-decoration: underline; cursor: pointer; }
+@keyframes bm-toast-in { from { opacity: 0; translate: -50% 12px; } }
+@media (prefers-reduced-motion: reduce) { html.bm .bm-toast { animation: none; } }
+
+/* Confetti from BM.burst: Pop! only. */
+html.bm .bm-burst { display: none; }

@@ -27,6 +27,11 @@ BM.course = {
         class: 'bm-chip', dataset: { chip: k }, 'aria-pressed': String(k === 'weeks'),
         onclick: () => { this.filter.chip = k; this.applyFilter(); },
       }, label)));
+    // One highlight that slides between the chips instead of each chip switching colour.
+    this.pill = h('span', { class: 'bm-chip-pill', 'aria-hidden': 'true' });
+    this.chipsEl.prepend(this.pill);
+    this.chipsEl.classList.add('has-pill');
+    addEventListener('resize', () => this.movePill(), { passive: true });
     this.statusEl = h('span', { class: 'bm-muted bm-small' });
     this.modeEl = h('span', { class: 'bm-muted bm-small', title: 'Turn off in the BetterMoodle toolbar popup' });
     const toggle = h('button', { class: 'bm-link-btn', onclick: () => setClassic(!classic) });
@@ -128,9 +133,13 @@ BM.course = {
           h('li', { class: 'bm-subhead', dataset: { group: 'files' }, hidden: true }, 'Files'),
           s.items.map((it) => this.renderItem(it))));
       head.addEventListener('click', () => {
-        const c = sec.classList.toggle('is-collapsed');
-        head.setAttribute('aria-expanded', String(!c));
-        this.saveFold(s.id, c);
+        const collapsing = head.getAttribute('aria-expanded') === 'true';
+        head.setAttribute('aria-expanded', String(!collapsing));
+        this.saveFold(s.id, collapsing);
+        const items = sec.querySelector('.bm-items');
+        if (this.root.classList.contains('is-filtering')) { sec.classList.toggle('is-collapsed', collapsing); return; }
+        if (collapsing) BM.slide(items, false, () => sec.classList.toggle('is-collapsed', head.getAttribute('aria-expanded') === 'false'));
+        else { sec.classList.remove('is-collapsed'); BM.slide(items, true); }
       });
       if (folded.has(s.id)) { sec.classList.add('is-collapsed'); head.setAttribute('aria-expanded', 'false'); }
       return sec;
@@ -202,7 +211,8 @@ BM.course = {
 
   applyFilter() {
     const { q, chip } = this.filter;
-    for (const b of this.chipsEl.children) b.setAttribute('aria-pressed', String(b.dataset.chip === chip));
+    for (const b of this.chipsEl.querySelectorAll('.bm-chip')) b.setAttribute('aria-pressed', String(b.dataset.chip === chip));
+    this.movePill();
     const filtering = !!q || chip !== 'weeks';
     const materials = chip === 'materials';
     this.root.classList.toggle('is-filtering', filtering);
@@ -225,10 +235,21 @@ BM.course = {
     }
   },
 
+  movePill() {
+    const on = this.chipsEl?.querySelector('.bm-chip[aria-pressed="true"]');
+    if (!on || !on.offsetWidth) return;
+    const p = this.pill;
+    p.style.transform = `translate(${on.offsetLeft}px, ${on.offsetTop}px)`;
+    p.style.width = `${on.offsetWidth}px`;
+    p.style.height = `${on.offsetHeight}px`;
+    if (!p.classList.contains('is-ready')) requestAnimationFrame(() => p.classList.add('is-ready')); // no slide on first placement
+  },
+
   async loadDue(courseId) {
+    const done = await BM.done.all();
     await BM.store.swr(`due-v2:${courseId}`, 5 * 60 * 1000, () => BM.api.courseDeadlines(courseId), (events) => {
       const h = BM.h;
-      const upcoming = events.slice().sort((a, b) => a.ts - b.ts).slice(0, 4);
+      const upcoming = events.filter((e) => !done[e.id]).slice().sort((a, b) => a.ts - b.ts).slice(0, 4);
       this.dueEl.hidden = !upcoming.length;
       this.dueEl.replaceChildren(
         h('span', { class: 'bm-due-label' }, 'Due'),

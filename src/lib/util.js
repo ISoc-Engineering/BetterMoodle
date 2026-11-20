@@ -149,6 +149,44 @@ BM.reveal = (els) => {
   for (const el of els) { el.classList.add('bm-reveal'); io.observe(el); }
 };
 
+const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// Smoothly open or close a block by animating its height. done() runs at the end (or straight away
+// with reduced motion), so callers can add/remove their "collapsed" class there or before.
+BM.slide = (el, open, done) => {
+  if (!el || reduceMotion() || !el.animate) { done?.(); return; }
+  el.getAnimations?.().forEach((a) => a.cancel());
+  const full = `${el.scrollHeight}px`;
+  const frames = open ? [{ height: '0px', opacity: 0 }, { height: full, opacity: 1 }] : [{ height: full, opacity: 1 }, { height: '0px', opacity: 0 }];
+  el.style.overflow = 'hidden';
+  const a = el.animate(frames, { duration: open ? 320 : 240, easing: 'cubic-bezier(.2, .8, .2, 1)' });
+  a.onfinish = a.oncancel = () => { el.style.overflow = ''; done?.(); };
+};
+
+// A small burst of confetti squares from an element's centre (CSS shows it only in Pop!).
+BM.burst = (from) => {
+  if (reduceMotion()) return;
+  const b = from.getBoundingClientRect();
+  const wrap = BM.h('div', { class: 'bm-burst', 'aria-hidden': 'true', style: `left:${b.left + b.width / 2}px;top:${b.top + b.height / 2}px` });
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2 + Math.random() * 0.5;
+    const d = 26 + Math.random() * 22;
+    wrap.append(BM.h('i', { style: `--dx:${Math.cos(a) * d}px;--dy:${Math.sin(a) * d}px;--r:${Math.round(Math.random() * 240 - 120)}deg;background:${BM.colorFor(i)}` }));
+  }
+  document.body.append(wrap);
+  setTimeout(() => wrap.remove(), 800);
+};
+
+// One toast at a time, bottom centre, with an optional action button (e.g. Undo). Gone after 5s.
+BM.toast = (message, actionLabel, onAction) => {
+  document.querySelector('.bm-toast')?.remove();
+  const h = BM.h;
+  const t = h('div', { class: 'bm-toast bm-root', role: 'status' }, h('span', {}, message),
+    actionLabel ? h('button', { class: 'bm-toast-btn', onclick: () => { t.remove(); onAction(); } }, actionLabel) : null);
+  document.body.append(t);
+  setTimeout(() => t.remove(), 5000);
+};
+
 BM.isTyping = (e) => {
   const t = e.target;
   return t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
