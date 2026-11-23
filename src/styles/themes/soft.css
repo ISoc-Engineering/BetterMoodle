@@ -2,6 +2,7 @@
  * Tokens only: this file shows how small a theme can be. */
 
 html.bm[data-bm-theme="soft"] {
+  --bm-canvas: #e8eef5;
   --bm-bg: #f4f7fb;
   --bm-bg-soft: #edf3f8;
   --bm-surface: #ffffff;

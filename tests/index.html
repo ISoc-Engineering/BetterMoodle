@@ -26,6 +26,8 @@ const SCENARIOS = [
   // forumapi=fail everywhere: like UCL, Moodle's forum web services are switched off.
   '/mod/forum/view.php?id=2004&check=forum&forumapi=fail',
   '/mod/forum/index.php?id=101&check=forumCourse&forumapi=fail',
+  '/mod/forum/index.php?id=102&check=forumAdvanced&forumapi=fail',
+  '/mod/hsuforum/view.php?id=3012&check=forumAdvancedView&forumapi=fail&course=102',
   '/mod/forum/index.php?id=102&check=forumNoPageContent&nocontent=1&forumapi=fail',
   '/mod/forum/view.php?id=2004&check=forumFails&forumapi=fail&forumpages=fail',
 ];

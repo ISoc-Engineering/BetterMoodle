@@ -1,9 +1,9 @@
-// Dashboard (/my/), laid out like the student dashboards people rate best (Canvas, Classroom):
-//   Main (top left, where eyes go first): every current course as a compact card, all visible, most
-//     recently used first or in your own dragged order. Each card says what needs attention inside it:
-//     Slides (new files), Forum (new posts), Due (deadlines this week), Grades.
-//   Right column: To do (deadlines, tick-off), Forums (5 newest posts, open our feed), Pinned, and the
-//     Feedback tracker.
+// Dashboard (/my/): blocks you can arrange (see layout.js):
+//   Courses: every current course as a compact card (a grid, or a sideways slider), most recently used
+//     first or in your own dragged order. Each card says what needs attention: Slides (new files),
+//     Forum (new posts), Due (this week), Grades.
+//   To do: deadlines, tick-off. Forums: the 5 newest posts. Pinboard: files, posts, deadlines,
+//     courses, links and your own notes, in your order. Feedback tracker.
 // The stock dashboard sits behind a toggle.
 var BM = globalThis.BM;
 
@@ -20,29 +20,35 @@ BM.home = {
     try { classic = localStorage.getItem('bm:classicHome') === '1'; } catch (_) {}
 
     this.coursesEl = h('ul', { class: 'bm-course-grid' }, h('li', { class: 'bm-muted' }, 'Loading courses…'));
+    this.coursesEl.addEventListener('scroll', () => this.updateArrows(), { passive: true });
     this.dueEl = h('div', { class: 'bm-due-list' }, h('p', { class: 'bm-muted' }, 'Loading deadlines…'));
     this.newsEl = h('div', { class: 'bm-news' }, h('p', { class: 'bm-muted' }, 'Loading forums…'));
-    this.pinsPanel = h('section', { class: 'bm-side-block bm-pins-panel', 'aria-labelledby': 'bm-h-pins', hidden: true });
-    const toggle = h('button', { class: 'bm-link-btn' });
-    const body = h('div', { class: 'bm-home-layout' },
-      h('section', { class: 'bm-home-main', 'aria-labelledby': 'bm-h-courses' },
-        h('h2', { class: 'bm-sec-label', id: 'bm-h-courses' }, 'Courses'),
-        this.coursesEl),
-      h('aside', { class: 'bm-home-side', 'aria-label': 'To do and updates' },
-        h('section', { class: 'bm-side-block', 'aria-labelledby': 'bm-h-due' }, h('h2', { class: 'bm-sec-label', id: 'bm-h-due' }, 'To do'), this.dueEl),
-        this.newsPanel(),
-        this.pinsPanel,
-        h('a', { class: 'bm-feedback-link', href: this.feedbackUrl() }, 'Feedback tracker', h('span', { 'aria-hidden': 'true' }, '›'))));
+    this.boardEl = h('div', { class: 'bm-pinboard' });
+    this.forumsLink = h('a', { class: 'bm-link-btn bm-open-forums', href: '#', hidden: true }, 'Open forums');
+    const toggle = h('button', { class: 'bm-link-btn bm-classic-toggle' });
+    const body = h('div', { class: 'bm-home-body' });
     const root = h('div', { id: 'bm-home', class: 'bm-root' },
-      h('div', { class: 'bm-home-top' }, h('div', { class: 'bm-spacer' }), toggle),
+      h('div', { class: 'bm-home-top' }, h('div', { class: 'bm-spacer' }), toggle, BM.layout.editButton(), BM.layout.customiseButton()),
       body);
     anchor.before(root);
+
+    await BM.layout.init(body, [
+      { id: 'courses', title: 'Courses', body: this.coursesEl, extra: this.coursesTools() },
+      { id: 'todo', title: 'To do', body: this.dueEl },
+      { id: 'forums', title: 'Forums', body: this.newsEl, extra: this.forumsLink },
+      { id: 'pinboard', title: 'Pinboard', body: this.boardEl, extra: this.boardTools() },
+      { id: 'feedback', title: 'Feedback tracker', bare: true, body: h('a', { class: 'bm-feedback-link', href: this.feedbackUrl() }, 'Feedback tracker', h('span', { 'aria-hidden': 'true' }, '›')) },
+    ]);
+    this.applyCoursesView();
+    BM.layout.onChange(() => this.applyCoursesView());
+    addEventListener('resize', () => this.updateArrows(), { passive: true });
 
     const setClassic = (v) => {
       classic = v;
       try { localStorage.setItem('bm:classicHome', v ? '1' : '0'); } catch (_) {}
       anchor.classList.toggle('bm-replaced', !v);
       body.hidden = v;
+      for (const b of root.querySelectorAll('.bm-home-top .bm-custom-btn')) b.hidden = v;
       toggle.textContent = v ? 'Use BetterMoodle dashboard' : 'Classic dashboard';
     };
     toggle.addEventListener('click', () => setClassic(!classic));
@@ -52,7 +58,7 @@ BM.home = {
     this.done = await BM.done.all();
     this.visits = await BM.recent.all();
     this.order = (await BM.store.get('course-order'))?.v || [];
-    this.renderPins();
+    await this.renderPins();
     BM.store.swr('deadlines-v2', 5 * 60 * 1000, () => BM.api.deadlines(), (ev) => this.renderDue(ev), err(this.dueEl));
     const courses = await BM.store.swr('courses-v2', 60 * 60 * 1000, () => BM.api.courses(), (c) => this.renderCourses(c), err(this.coursesEl));
 
@@ -76,6 +82,45 @@ BM.home = {
 
   // ---------------------------------------------------------------- courses
 
+  // Grid / Slider switch, plus the slider's arrows (only while sliding and only if it overflows).
+  coursesTools() {
+    const h = BM.h;
+    const seg = (view, label, svg) => {
+      const b = h('button', { class: 'bm-seg-btn', type: 'button', title: label, 'aria-label': `Show courses as a ${label.toLowerCase()}`, dataset: { view }, onclick: () => BM.layout.setCourses(view) });
+      b.innerHTML = svg;
+      return b;
+    };
+    this.prevBtn = h('button', { class: 'bm-strip-btn', type: 'button', 'aria-label': 'Scroll courses left', onclick: () => this.scrollCourses(-1) }, '‹');
+    this.nextBtn = h('button', { class: 'bm-strip-btn', type: 'button', 'aria-label': 'Scroll courses right', onclick: () => this.scrollCourses(1) }, '›');
+    this.viewSeg = h('div', { class: 'bm-seg', role: 'group', 'aria-label': 'Course view' },
+      seg('grid', 'Grid', '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>'),
+      seg('slider', 'Slider', '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="3" width="4" height="10" rx="1"/><rect x="6" y="3" width="4" height="10" rx="1"/><rect x="11" y="3" width="4" height="10" rx="1" opacity=".45"/></svg>'));
+    return h('div', { class: 'bm-block-tools' }, this.prevBtn, this.nextBtn, this.viewSeg);
+  },
+
+  applyCoursesView() {
+    const slider = BM.layout.state.courses === 'slider';
+    this.coursesEl.classList.toggle('is-slider', slider);
+    for (const b of this.viewSeg.querySelectorAll('.bm-seg-btn')) b.setAttribute('aria-pressed', String(b.dataset.view === BM.layout.state.courses));
+    this.updateArrows();
+  },
+
+  scrollCourses(dir) {
+    const el = this.coursesEl;
+    const smooth = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+    el.scrollBy({ left: dir * Math.max(240, el.clientWidth * 0.8), behavior: smooth ? 'smooth' : 'auto' });
+  },
+
+  updateArrows() {
+    const el = this.coursesEl;
+    if (!el || !this.prevBtn) return;
+    const slider = el.classList.contains('is-slider');
+    const max = el.scrollWidth - el.clientWidth;
+    this.prevBtn.hidden = this.nextBtn.hidden = !slider || max <= 1;
+    this.prevBtn.disabled = el.scrollLeft <= 1;
+    this.nextBtn.disabled = el.scrollLeft >= max - 1;
+  },
+
   // Your dragged order first (if any), then most recently used, then Moodle's last-accessed order.
   sortCourses(courses) {
     const api = new Map(courses.map((c, i) => [c.id, i]));
@@ -95,21 +140,22 @@ BM.home = {
     this.coursesEl.replaceChildren(...sorted.map((c) => this.card(c)));
     if (first) BM.enter(this.coursesEl.querySelectorAll('.bm-course'));
     if (this.forumsLink && sorted[0]) { this.forumsLink.href = BM.forumLink(sorted[0].id); this.forumsLink.hidden = false; }
+    this.updateArrows();
   },
 
   card(c) {
     const h = BM.h;
-    const [code, ...rest] = c.name.split(':');
-    const hasCode = rest.length && /^[A-Z]{3,5}\d{3,5}/.test(code.trim());
+    const { code, title } = this.splitName(c);
     const week = h('span', { class: 'bm-course-week bm-small' });
     const btn = (kind, label, href) => h('a', { class: 'bm-cbtn', href, draggable: 'false', dataset: { kind } },
       h('span', {}, label), h('span', { class: 'bm-count', hidden: true }));
     const li = h('li', { class: 'bm-course', draggable: 'true', dataset: { id: c.id }, style: `--c:${BM.courseColor(c.id)}` },
       h('div', { class: 'bm-course-head' },
         h('a', { class: 'bm-course-main', href: `/course/view.php?id=${c.id}`, draggable: 'false' },
-          h('span', { class: 'bm-course-code' }, c.fav ? '★ ' : '', hasCode ? code.trim() : c.short),
+          h('span', { class: 'bm-course-code' }, c.fav ? '★ ' : '', code),
           // Same name as the course page title, so it grows into it on the way there.
-          h('span', { class: 'bm-course-name', style: `view-transition-name: bm-course-${c.id}` }, hasCode ? rest.join(':').trim() : c.name)),
+          h('span', { class: 'bm-course-name', style: `view-transition-name: bm-course-${c.id}` }, title)),
+        this.pinButton({ kind: 'course', id: String(c.id), title: c.name, url: `/course/view.php?id=${c.id}`, course: c.name, courseId: c.id }),
         this.colorButton(c)),
       week,
       h('div', { class: 'bm-course-actions' },
@@ -122,6 +168,12 @@ BM.home = {
     this.setCount(li, 'forum', this.counts.forum[c.id]);
     this.setCount(li, 'due', this.counts.due[c.id]);
     return li;
+  },
+
+  splitName(c) {
+    const [code, ...rest] = c.name.split(':');
+    const hasCode = rest.length && /^[A-Z]{3,5}\d{3,5}/.test(code.trim());
+    return { code: hasCode ? code.trim() : c.short, title: hasCode ? rest.join(':').trim() : c.name };
   },
 
   setCount(card, kind, n) {
@@ -142,15 +194,18 @@ BM.home = {
     } catch (_) { /* the card still works without it */ }
   },
 
-  // Drag a card onto another to reorder; the order is remembered.
+  // Drag a card onto another to reorder; the order is remembered. In the slider the cards sit in a
+  // row, in the grid in rows, so "after" means right of the middle either way.
   dragHandlers(li) {
     li.addEventListener('dragstart', (e) => {
+      if (e.target !== li) return;
       this.dragging = li;
       li.classList.add('is-dragging');
       e.dataTransfer.effectAllowed = 'move';
       e.dataTransfer.setData('text/plain', li.dataset.id);
     });
     li.addEventListener('dragend', () => {
+      if (this.dragging !== li) return;
       li.classList.remove('is-dragging');
       this.dragging = null;
       this.saveOrder();
@@ -163,7 +218,7 @@ BM.home = {
       const after = e.clientX > r.left + r.width / 2;
       li[after ? 'after' : 'before'](from);
     });
-    li.addEventListener('drop', (e) => e.preventDefault());
+    li.addEventListener('drop', (e) => { if (this.dragging) e.preventDefault(); });
   },
 
   saveOrder() {
@@ -182,7 +237,7 @@ BM.home = {
       document.querySelector('.bm-swatches')?.remove();
       if (open) { btn.setAttribute('aria-expanded', 'false'); return; }
       btn.setAttribute('aria-expanded', 'true');
-      const pick = async (color) => { await BM.colors.set(c.id, color); this.renderCourses(this.lastCourses); this.renderDue(this.events || []); if (this.news) this.renderNews(this.news); };
+      const pick = async (color) => { await BM.colors.set(c.id, color); this.rerenderAll(); };
       card.append(h('div', { class: 'bm-swatches', role: 'group', 'aria-label': 'Course colour' },
         BM.PALETTE.map((col) => h('button', { class: 'bm-swatch', style: `--c:${col}`, 'aria-label': col, onclick: () => pick(col) })),
         h('button', { class: 'bm-swatch is-reset', onclick: () => pick(''), title: 'Default' }, '↺')));
@@ -190,7 +245,183 @@ BM.home = {
     return btn;
   },
 
-  // ---------------------------------------------------------------- right column
+  rerenderAll() {
+    if (this.lastCourses) this.renderCourses(this.lastCourses);
+    this.renderDue(this.events || []);
+    if (this.news) this.renderNews(this.news);
+    this.renderPins();
+  },
+
+  // ---------------------------------------------------------------- pins
+
+  // The pin button used on dashboard items (courses, deadlines, forum posts). Pressed = on the Pinboard.
+  pinButton(p) {
+    const on = this.pinned?.has(BM.pins.key(p));
+    const b = BM.h('button', { class: 'bm-pin bm-pin-sm', type: 'button', 'aria-pressed': String(!!on), 'aria-label': `${on ? 'Unpin' : 'Pin'} ${p.title}`, title: on ? 'Unpin' : 'Pin to Pinboard', dataset: { key: BM.pins.key(p) } });
+    b.innerHTML = BM.PIN_SVG;
+    b.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const now = b.getAttribute('aria-pressed') !== 'true';
+      await BM.pins.toggle(p, now);
+      await this.renderPins();
+      this.syncPinButtons();
+      if (now) BM.toast('Pinned to your Pinboard');
+    });
+    return b;
+  },
+
+  syncPinButtons() {
+    for (const b of document.querySelectorAll('#bm-home .bm-pin-sm')) {
+      const label = b.getAttribute('aria-label').replace(/^(Unpin|Pin) /, '');
+      const key = b.dataset.key;
+      if (!key) continue;
+      const on = this.pinned.has(key);
+      b.setAttribute('aria-pressed', String(on));
+      b.setAttribute('aria-label', `${on ? 'Unpin' : 'Pin'} ${label}`);
+      b.title = on ? 'Unpin' : 'Pin to Pinboard';
+    }
+  },
+
+  // + Note and + Link, in the Pinboard's heading.
+  boardTools() {
+    const h = BM.h;
+    return h('div', { class: 'bm-block-tools' },
+      h('button', { class: 'bm-tool-btn', type: 'button', onclick: () => this.addNote() }, '+ Note'),
+      h('button', { class: 'bm-tool-btn', type: 'button', onclick: () => this.linkForm() }, '+ Link'));
+  },
+
+  async addNote() {
+    BM.layout.state.folded.pinboard && BM.layout.toggleFold('pinboard');
+    const pins = await BM.pins.list();
+    const used = new Set(pins.filter((p) => p.kind === 'note').map((p) => p.color));
+    const color = BM.PALETTE.find((c) => !used.has(c)) || BM.PALETTE[pins.length % BM.PALETTE.length];
+    const id = `n${Date.now().toString(36)}`;
+    await BM.pins.toggle({ kind: 'note', id, title: '', text: '', color }, true);
+    await this.renderPins();
+    this.boardEl.querySelector(`[data-key="note:${id}"] textarea`)?.focus();
+  },
+
+  // A small inline form: address, and an optional name. Only http(s) addresses are accepted.
+  linkForm() {
+    const h = BM.h;
+    BM.layout.state.folded.pinboard && BM.layout.toggleFold('pinboard');
+    this.boardEl.querySelector('.bm-link-form')?.remove();
+    const url = h('input', { class: 'bm-input', type: 'url', placeholder: 'Paste a link', 'aria-label': 'Link address', required: true });
+    const name = h('input', { class: 'bm-input', type: 'text', placeholder: 'Name (optional)', 'aria-label': 'Link name' });
+    const msg = h('span', { class: 'bm-small bm-form-msg', role: 'alert' });
+    const form = h('form', { class: 'bm-link-form' }, url, name,
+      h('div', { class: 'bm-form-row' }, msg, h('div', { class: 'bm-spacer' }),
+        h('button', { class: 'bm-link-btn', type: 'button', onclick: () => form.remove() }, 'Cancel'),
+        h('button', { class: 'bm-btn bm-btn-primary', type: 'submit' }, 'Pin link')));
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      let u;
+      try { u = new URL(url.value.trim(), location.href); } catch (_) {}
+      if (!u || !/^https?:$/.test(u.protocol)) { msg.textContent = 'That isn’t a web address.'; url.focus(); return; }
+      const title = name.value.trim() || (u.hostname + u.pathname).replace(/\/$/, '');
+      await BM.pins.toggle({ kind: 'link', id: `l${Date.now().toString(36)}`, title, url: u.href }, true);
+      form.remove();
+      this.renderPins();
+    });
+    form.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); form.remove(); } });
+    this.boardEl.prepend(form);
+    url.focus();
+  },
+
+  KIND_LABEL: { file: 'File', post: 'Forum post', week: 'Week', deadline: 'Deadline', course: 'Course', link: 'Link' },
+
+  // The Pinboard: everything you pinned as cards, in your order (drag to rearrange). Notes are typed
+  // straight onto the card and saved as you go.
+  async renderPins() {
+    const h = BM.h;
+    const pins = await BM.pins.list();
+    this.pinned = new Set(pins.map((p) => BM.pins.key(p)));
+    const form = this.boardEl.querySelector('.bm-link-form');
+    if (!pins.length) {
+      this.boardEl.replaceChildren(form || '', h('p', { class: 'bm-muted bm-small bm-board-empty' }, 'Nothing pinned yet. Use the pin on a course, deadline, post or file, or add a note.'));
+      return;
+    }
+    const list = h('ul', { class: 'bm-board' }, pins.map((p) => this.pinCard(p)));
+    this.boardEl.replaceChildren(...[form, list].filter(Boolean));
+  },
+
+  pinCard(p) {
+    const h = BM.h;
+    const key = BM.pins.key(p);
+    const remove = h('button', { class: 'bm-pin-x', type: 'button', title: 'Unpin', 'aria-label': `Unpin ${p.title || 'note'}` }, '×');
+    remove.addEventListener('click', async () => {
+      await BM.pins.toggle(p, false);
+      await this.renderPins();
+      this.syncPinButtons();
+      BM.toast(p.kind === 'note' ? 'Note deleted' : 'Unpinned', 'Undo', async () => { await BM.pins.toggle(p, true); await this.renderPins(); this.syncPinButtons(); });
+    });
+    let li;
+    if (p.kind === 'note') {
+      const text = h('textarea', { class: 'bm-note-text', rows: '3', placeholder: 'Write a note', 'aria-label': 'Note' });
+      text.value = p.text || '';
+      let timer;
+      text.addEventListener('input', () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => BM.pins.save({ ...p, text: text.value }), 400);
+      });
+      text.addEventListener('blur', () => { clearTimeout(timer); BM.pins.save({ ...p, text: text.value }); });
+      const recolor = h('button', { class: 'bm-note-color', type: 'button', title: 'Change colour', 'aria-label': 'Change note colour' });
+      recolor.addEventListener('click', async () => {
+        const next = BM.PALETTE[(BM.PALETTE.indexOf(p.color) + 1) % BM.PALETTE.length];
+        p.color = next;
+        li.style.setProperty('--c', next);
+        await BM.pins.save({ ...p, text: text.value });
+      });
+      li = h('li', { class: 'bm-pin-card is-note', dataset: { key }, style: `--c:${p.color || BM.PALETTE[1]}` },
+        h('div', { class: 'bm-pin-bar' }, recolor, h('div', { class: 'bm-spacer' }), remove), text);
+    } else {
+      const course = p.kind === 'course' ? '' : this.shortCourse(p.course);
+      li = h('li', { class: 'bm-pin-card', dataset: { key, kind: p.kind }, style: `--c:${p.courseId ? BM.courseColor(p.courseId) : 'var(--bm-line)'}` },
+        h('a', { class: 'bm-pin-item', href: p.url, draggable: 'false' },
+          h('span', { class: 'bm-pin-kind bm-small' }, [this.KIND_LABEL[p.kind] || 'Pinned', course].filter(Boolean).join(', ')),
+          h('span', { class: 'bm-pin-title' }, p.kind === 'course' ? this.splitName({ name: p.title, short: p.title }).title : p.title),
+          p.kind === 'deadline' && p.ts ? h('span', { class: 'bm-pin-when bm-small' }, BM.countdown(p.ts)) : null),
+        remove);
+    }
+    this.pinDrag(li);
+    return li;
+  },
+
+  // Drag a card to a new spot on the board. Typing in a note never starts a drag.
+  pinDrag(li) {
+    li.addEventListener('pointerdown', (e) => { li.draggable = !e.target.closest('textarea, button, input'); });
+    li.addEventListener('dragstart', (e) => {
+      if (e.target !== li) return;
+      e.stopPropagation();
+      this.pinDragging = li;
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', li.dataset.key);
+      requestAnimationFrame(() => { if (this.pinDragging === li) li.classList.add('is-dragging'); });
+    });
+    li.addEventListener('dragend', async (e) => {
+      if (e.target !== li) return;
+      e.stopPropagation();
+      li.classList.remove('is-dragging');
+      li.draggable = false;
+      this.pinDragging = null;
+      await BM.pins.reorder([...this.boardEl.querySelectorAll('.bm-pin-card')].map((x) => x.dataset.key));
+    });
+    li.addEventListener('dragover', (e) => {
+      const from = this.pinDragging;
+      if (!from || from === li) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const r = li.getBoundingClientRect();
+      // One card per row (narrow column): above/below. Several per row: left/right.
+      const wide = r.width > this.boardEl.clientWidth * 0.6;
+      const after = wide ? e.clientY > r.top + r.height / 2 : e.clientX > r.left + r.width / 2;
+      li[after ? 'after' : 'before'](from);
+    });
+    li.addEventListener('drop', (e) => { if (this.pinDragging) { e.preventDefault(); e.stopPropagation(); } });
+  },
+
+  // ---------------------------------------------------------------- To do
 
   renderDue(all) {
     const h = BM.h;
@@ -214,7 +445,8 @@ BM.home = {
                 h('span', { class: 'bm-due-name' }, e.name),
                 h('span', { class: 'bm-muted bm-small' }, this.shortCourse(e.courseName))),
               h('span', { class: 'bm-due-side' },
-                h('span', { class: 'bm-due-count', title: BM.fmtTime(e.ts) }, BM.countdown(e.ts))))))))));
+                h('span', { class: 'bm-due-count', title: BM.fmtTime(e.ts) }, BM.countdown(e.ts)))),
+            this.pinButton({ kind: 'deadline', id: String(e.id), title: e.name, url: e.url, ts: e.ts, course: e.courseName, courseId: e.courseId })))))));
   },
 
   // Tick a deadline off: the circle fills and draws a check, confetti pops (Pop!), the row is struck
@@ -242,26 +474,9 @@ BM.home = {
     return btn;
   },
 
-  // Forums: the 5 newest posts (open by default; the heading folds it away, remembered).
-  // Posts and "Open forums" go to our forum feed, not Moodle's pages.
-  newsPanel() {
-    const h = BM.h;
-    let folded = false;
-    try { folded = localStorage.getItem('bm:fold:news') === '1'; } catch (_) {}
-    this.forumsLink = h('a', { class: 'bm-link-btn bm-open-forums', href: '#', hidden: true }, 'Open forums');
-    const head = h('button', { class: 'bm-fold-head', 'aria-expanded': String(!folded), 'aria-controls': 'bm-news-body' },
-      h('h2', { class: 'bm-sec-label', id: 'bm-h-news' }, 'Forums'));
-    const body = h('div', { id: 'bm-news-body', hidden: folded }, this.newsEl);
-    head.addEventListener('click', () => {
-      const open = head.getAttribute('aria-expanded') !== 'true';
-      head.setAttribute('aria-expanded', String(open));
-      try { localStorage.setItem('bm:fold:news', open ? '0' : '1'); } catch (_) {}
-      if (open) { body.hidden = false; BM.slide(body, true); } else BM.slide(body, false, () => { body.hidden = head.getAttribute('aria-expanded') !== 'true'; });
-    });
-    return h('section', { class: 'bm-side-block bm-news-panel', 'aria-labelledby': 'bm-h-news' },
-      h('div', { class: 'bm-panel-head' }, head, h('div', { class: 'bm-spacer' }), this.forumsLink), body);
-  },
+  // ---------------------------------------------------------------- Forums
 
+  // The 5 newest posts. Posts and "Open forums" go to our forum feed, not Moodle's pages.
   renderNews(items) {
     const h = BM.h;
     this.news = items;
@@ -273,29 +488,16 @@ BM.home = {
     if (!items.length) { this.newsEl.replaceChildren(h('p', { class: 'bm-muted' }, 'No forum posts yet.')); return; }
     this.newsEl.replaceChildren(h('ul', { class: 'bm-news-list' }, items.slice(0, 5).map((n) => {
       const fresh = isNew(n);
-      return h('li', {},
-        h('a', { class: 'bm-news-item' + (fresh ? ' is-new' : ''), href: n.courseId ? BM.forumLink(n.courseId, n.id) : n.url, style: `--c:${BM.courseColor(n.courseId)}` },
+      const href = n.courseId ? BM.forumLink(n.courseId, n.id) : n.url;
+      return h('li', { class: 'bm-news-row' },
+        h('a', { class: 'bm-news-item' + (fresh ? ' is-new' : ''), href, style: `--c:${BM.courseColor(n.courseId)}` },
           h('span', { class: 'bm-news-top' },
             h('span', { class: 'bm-news-title' }, n.title),
             fresh ? h('span', { class: 'bm-badge' }, 'New') : null),
           h('span', { class: 'bm-muted bm-small' },
-            [this.shortCourse(n.courseName), n.forumName, n.ts ? BM.ago(n.ts) : ''].filter(Boolean).join(' · '))));
+            [this.shortCourse(n.courseName), n.forumName, n.ts ? BM.ago(n.ts) : ''].filter(Boolean).join(', '))),
+        this.pinButton({ kind: 'post', id: String(n.id), title: n.title, url: href, course: n.courseName, courseId: n.courseId }));
     })));
-  },
-
-  // Pinned: files and forum posts you pinned, newest first, each with Unpin.
-  async renderPins() {
-    const h = BM.h;
-    const pins = await BM.pins.list();
-    this.pinsPanel.hidden = !pins.length;
-    if (!pins.length) return;
-    this.pinsPanel.replaceChildren(
-      h('h2', { class: 'bm-sec-label', id: 'bm-h-pins' }, 'Pinned'),
-      h('ul', { class: 'bm-pin-list' }, pins.map((p) => h('li', {},
-        h('a', { class: 'bm-pin-item', href: p.url, style: `--c:${BM.courseColor(p.courseId)}` },
-          h('span', { class: 'bm-pin-title' }, p.title),
-          h('span', { class: 'bm-muted bm-small' }, [this.shortCourse(p.course), p.kind === 'post' ? 'Forum post' : 'File'].filter(Boolean).join(' · '))),
-        h('button', { class: 'bm-link-btn bm-unpin', 'aria-label': `Unpin ${p.title}`, onclick: async () => { await BM.pins.toggle(p, false); this.renderPins(); } }, 'Unpin')))));
   },
 
   // The Feedback tracker: the same page as the "Feedback tracker" link in Moodle's top bar (read from

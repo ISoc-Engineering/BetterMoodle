@@ -1,0 +1,19 @@
+/* "Sage": quiet green on off-white, for long reading sessions. Tokens only. */
+
+html.bm[data-bm-theme="sage"] {
+  --bm-canvas: #e6eae1;
+  --bm-bg: #f1f3ee;
+  --bm-bg-soft: #e6eae1;
+  --bm-surface: #fbfcf9;
+  --bm-line: #d3dacb;
+  --bm-text: #1f2a22;
+  --bm-muted: #5d6a5f;
+  --bm-accent: #2f6b4a;
+  --bm-accent-soft: #dfeae2;
+  --bm-chip-on: #2f6b4a;
+  --bm-chip-on-text: #fbfcf9;
+  --bm-danger: #b23a2a;
+  --bm-weight-strong: 550;
+  --bm-radius: 10px;
+  --bm-radius-sm: 7px;
+}

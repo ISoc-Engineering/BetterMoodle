@@ -114,7 +114,7 @@ BM.pool = async (items, limit, fn) => {
 
 // ---- themes ----
 // Theme names match src/styles/themes/<name>.css ('minimal' has no file: it's the plain tokens.css). 'pop' is the default.
-BM.THEMES = ['minimal', 'soft', 'pop'];
+BM.THEMES = ['minimal', 'soft', 'sage', 'pop', 'night'];
 BM.applyTheme = (name) => {
   const t = BM.THEMES.includes(name) ? name : 'pop';
   document.documentElement.dataset.bmTheme = t;
@@ -191,6 +191,8 @@ BM.toast = (message, actionLabel, onAction, ms = 5000) => {
   document.body.append(t);
   setTimeout(() => t.remove(), ms);
 };
+
+BM.PIN_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3l6 6-3 1-4 4 1 5-2 2-4-4-5 5-1-1 5-5-4-4 2-2 5 1 4-4z"/></svg>';
 
 BM.isTyping = (e) => {
   const t = e.target;

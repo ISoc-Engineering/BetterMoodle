@@ -11,6 +11,7 @@ html.bm {
   --bm-bg: #ffffff;            /* page and panel background */
   --bm-bg-soft: #f6f6f4;       /* hover fills, quiet surfaces */
   --bm-surface: #ffffff;       /* panels, cards, the viewer */
+  --bm-canvas: #f3f3f0;        /* behind the dashboard and forum panels, a shade off the surface */
   --bm-page: var(--bm-bg);     /* what's behind everything (can be a pattern) */
   --bm-line: #e6e6e3;          /* every border */
   --bm-text: #1b1b1a;

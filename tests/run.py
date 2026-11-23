@@ -82,8 +82,55 @@ def course_sections(courseid):
         cms = [c for c in s['cms'] if c[0] != '2004' or courseid == 101]
         if s['number'] == 0:
             cms = cms + [(ANNOUNCEMENT_CM.get(courseid, f'39{courseid}'), 'Announcements', 'forum', None)]
+            if courseid == 102:  # like UCL's COMP0002: the Q&A board is an Advanced Forum (mod/hsuforum)
+                cms = cms + [(HSU_CM, 'Discussion board', 'hsuforum', None)]
         out.append({**s, 'cms': cms})
     return out
+
+# ---------------------------------------------------------------- Advanced Forum (mod/hsuforum)
+# Its own pages and markup: a discussion is an <article class="hsuforum-thread">; replies sit in nested
+# <ol class="hsuforum-thread-replies-list">, and a reply's own replies are NEXT to it, not inside it.
+HSU_CM = '3012'
+HSU_DISCUSSIONS = [
+    # (d, title, author, created ago, replies shown in the list (None = the list doesn't say), posts)
+    (901, 'Induction help', 'Dana Student', 15 * 86400, 3, [
+        (9011, 0, 'TA Priya', 14 * 86400, 'Start at n = 1.'),
+        (9012, 9011, 'Dana Student', 14 * 86400 - 600, 'Thanks, that fixed it!'),
+        (9013, 0, 'Alex Peer', 13 * 86400, 'Or n = 0 if it holds there.')]),
+    (902, 'Proof by contradiction?', 'Kim Lee', 16 * 86400, None, [
+        (9021, 0, 'Lecturer', 15 * 86400, 'Yes, that works.')]),
+]
+
+def hsu_view_page():
+    items = ''
+    for d, title, who, ago, shown, _ in HSU_DISCUSSIONS:
+        count = f'<a href="/mod/hsuforum/discuss.php?d={d}#replies">{shown} replies</a> <span class="hsuforum-unreadcount">2 new</span>' if shown else ''
+        items += (f'<li><article id="p{d}0" class="hsuforum-thread hsuforum-post-target" data-discussionid="{d}" data-postid="{d}0" data-author="{esc(who)}" data-isdiscussion="true">'
+                  f'<header><img class="userpicture" src=""><p class="hsuforum-thread-byline"><span class="hsuforum-thread-author"><a href="/user/view.php?id=60">{esc(who)}</a></span> '
+                  f'<time datetime="{iso(NOW - ago)}">date</time></p>'
+                  f'<h4 class="hsuforum-thread-title"><a class="js-forum-discussion-title" href="https://moodle.example/mod/hsuforum/discuss.php?d={d}">{esc(title)}</a></h4></header>'
+                  f'<div class="hsuforum-thread-meta">{count}</div></article></li>')
+    return (f'<!doctype html><body id="page-mod-hsuforum-view"><div id="region-main"><a class="btn" href="/mod/hsuforum/post.php?forum=12">Add a new discussion</a>'
+            f'<ol class="hsuforum-threads-wrapper">{items}</ol></div></body>')
+
+def hsu_discuss_page(did):
+    disc = next((x for x in HSU_DISCUSSIONS if x[0] == did), None)
+    if not disc:
+        return '<!doctype html><body><div id="region-main">Not found</div></body>'
+    d, title, who, ago, _, posts = disc
+    def reply(p):
+        pid, _, author, pago, text = p
+        kids = ''.join(reply(k) for k in posts if k[1] == pid)
+        return (f'<li class="hsuforum-post" data-depth="1"><div class="hsuforum-post-wrapper hsuforum-post-target" id="p{pid}" data-postid="{pid}" data-author="{esc(author)}" data-ispost="true">'
+                f'<img class="userpicture" src=""><div class="hsuforum-post-body"><h6 class="hsuforum-post-byline"><a href="/user/view.php?id=2">{esc(author)}</a> '
+                f'<time datetime="{iso(NOW - pago)}">date</time></h6><div class="posting fullpost"><p>{esc(text)}</p></div></div></div>'
+                + (f'<ol class="hsuforum-thread-replies-list">{kids}</ol>' if kids else '') + '</li>')
+    replies = ''.join(reply(p) for p in posts if p[1] == 0)
+    return (f'<!doctype html><body id="page-mod-hsuforum-discuss"><div id="region-main">'
+            f'<article id="p{d}0" class="hsuforum-thread hsuforum-post-target" data-discussionid="{d}" data-postid="{d}0" data-author="{esc(who)}" data-isdiscussion="true">'
+            f'<header><h4 class="hsuforum-thread-title">{esc(title)}</h4><time datetime="{iso(NOW - ago)}">date</time></header>'
+            f'<div class="hsuforum-thread-content"><div class="hsuforum-post-body"><div class="posting fullpost"><p>Opening post of {esc(title)}</p></div></div></div>'
+            f'<div class="hsuforum-thread-replies"><ol class="hsuforum-thread-replies-list">{replies}</ol></div></article></div></body>')
 
 def course_state(courseid):
     cms, sections = [], []
@@ -244,6 +291,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self.send(forum_view_page(qs.get('id', [''])[0]))
         if url.path == '/mod/forum/discuss.php':
             return self.send(discuss_page(int(qs.get('d', ['0'])[0])))
+        if url.path == '/mod/hsuforum/view.php':
+            return self.send((ROOT / 'tests' / 'fixture.html').read_text(encoding='utf-8') if navigating else hsu_view_page())
+        if url.path == '/mod/hsuforum/discuss.php':
+            return self.send(hsu_discuss_page(int(qs.get('d', ['0'])[0])))
         if url.path.startswith('/mod/'):
             return self.send('<!doctype html><body id="destination">Moodle activity page</body>')
         if url.path.startswith('/theme/'):

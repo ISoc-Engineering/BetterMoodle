@@ -33,7 +33,8 @@ var BM = globalThis.BM;
     if (id === 'page-my-index') await BM.home.init();
     else if (/^page-course-view-/.test(id)) await BM.course.init(BM.courseIdFromBody());
     // Forum pages are matched by address too, in case UCL's theme gives them a different body id.
-    else if (/^page-mod-forum-(view|index)$/.test(id) || /\/mod\/forum\/(view|index)\.php$/.test(location.pathname)) await BM.forum.init();
+    // Advanced Forum (mod/hsuforum, UCL's Q&A forums) list pages open the same feed.
+    else if (/^page-mod-(forum|hsuforum)-(view|index)$/.test(id) || /\/mod\/(forum\/(view|index)|hsuforum\/view)\.php$/.test(location.pathname)) await BM.forum.init();
   } catch (e) {
     console.warn('[BetterMoodle] feature failed; leaving the stock page alone', e);
   }

@@ -68,6 +68,13 @@ html.bm #ucl-navbar { view-transition-name: bm-navbar; }
   @view-transition { navigation: none; }
 }
 
+/* Use the whole page. UCL marks course and forum pages "limitedwidth", which squeezes the content
+ * into a ~830px column; while one of our views is showing it gets the full width instead. */
+html.bm body:has(#bm-home, #bm-forum, #bm-course) :is(#topofscroll, .main-inner, #page-content, #region-main-box, #region-main, [role="main"]) {
+  max-width: none !important;
+}
+html.bm body:has(#bm-home, #bm-forum, #bm-course) #topofscroll { padding-left: 32px; padding-right: 32px; }
+
 /* Our views replace these when active (toggle back with "Classic view"). */
 html.bm .bm-replaced { display: none !important; }
 

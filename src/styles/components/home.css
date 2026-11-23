@@ -1,27 +1,176 @@
-/* Dashboard (/my/): courses grid on the left (where eyes go first), a slim To do / Forums / Pinned /
- * Feedback column on the right. Tokens only; Pop! adds its colours in themes/pop.css. */
+/* Dashboard (/my/): blocks you arrange by dragging (layout.js): an optional full-width strip, then one
+ * to three columns with resizable gaps. Courses as a grid or a slider, the Pinboard, Customise.
+ * Tokens only; Pop! adds its colours in themes/pop.css. */
 
 html.bm #bm-home { margin-top: 20px; }
-html.bm .bm-home-top { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-html.bm .bm-home-layout { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 28px; align-items: start; }
-html.bm .bm-home-layout[hidden] { display: none; }
-@media (max-width: 980px) { html.bm .bm-home-layout { grid-template-columns: minmax(0, 1fr); } }
+html.bm .bm-home-top { position: relative; display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+html.bm .bm-home-body[hidden] { display: none; }
+
+/* A calm canvas behind the dashboard and forums so the panels stand out (Pop! keeps its dot paper). */
+html.bm body:has(#bm-home, #bm-forum) { background: var(--bm-canvas, var(--bm-page)); }
+
+/* ---- Layout: full-width strip, columns, gaps ---- */
+html.bm .bm-top-row { display: grid; gap: 22px; }
+html.bm .bm-top-row.has-blocks { margin-bottom: 26px; }
+html.bm .bm-top-drop { display: none; }
+html.bm :is(.bm-layout.is-arranging, .bm-layout.is-editing) .bm-top-drop {
+  display: grid; place-items: center; min-height: 46px; margin-bottom: 18px; border: 2px dashed var(--bm-line);
+  border-radius: var(--bm-radius); color: var(--bm-muted); font-size: .85rem;
+}
+html.bm .bm-top-row.has-blocks .bm-top-drop { margin: 0; }
+html.bm .bm-top-row.is-target .bm-top-drop { border-color: var(--bm-accent); color: var(--bm-text); }
+html.bm .bm-home-layout { display: grid; column-gap: 0; row-gap: 22px; align-items: start; }
+html.bm .bm-col { display: grid; gap: 22px; align-content: start; min-width: 0; min-height: 60px; border-radius: var(--bm-radius); }
+
+/* The gap between columns: drag it to resize. A line shows on hover, while editing, or while dragging. */
+html.bm .bm-gutter { position: relative; align-self: stretch; min-height: 60px; cursor: col-resize; touch-action: none; }
+html.bm .bm-gutter::before {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 4px; translate: -50% 0; border-radius: 2px;
+  background: var(--bm-accent); opacity: 0; transition: opacity .15s;
+}
+html.bm .bm-gutter:hover::before, html.bm .bm-gutter:focus-visible::before, html.bm .bm-gutter.is-active::before { opacity: .7; }
+html.bm .bm-layout.is-editing .bm-gutter::before { opacity: .3; background: var(--bm-muted); }
+html.bm .bm-gutter:focus-visible { outline: none; }
+
+@media (max-width: 980px) {
+  html.bm .bm-home-layout { grid-template-columns: minmax(0, 1fr) !important; }
+  html.bm .bm-gutter { display: none; }
+}
 
 /* Small section labels instead of big headings. */
 html.bm .bm-sec-label {
-  margin: 0 0 10px; font: var(--bm-weight-head) .78rem var(--bm-font-mono); letter-spacing: .06em;
+  margin: 0; font: var(--bm-weight-head) .78rem var(--bm-font-mono); letter-spacing: .06em;
   text-transform: uppercase; color: var(--bm-muted);
 }
 
-/* ---- Courses: every current course visible, compact cards ---- */
+/* ---- Blocks: each one a panel with a title bar (handle, name that folds, tools) ---- */
+html.bm .bm-block { position: relative; min-width: 0; }
+html.bm .bm-block:not(.is-bare) {
+  padding: 12px 16px 16px; background: var(--bm-surface); border: var(--bm-border-strong) solid var(--bm-line);
+  border-radius: calc(var(--bm-radius) + 4px); box-shadow: var(--bm-shadow-panel);
+}
+html.bm .bm-block-head { position: relative; display: flex; align-items: center; gap: 6px; min-height: 28px; margin: 0 -4px 12px; }
+html.bm .bm-block.is-folded .bm-block-head { margin-bottom: 0; }
+html.bm .bm-block-tools { display: flex; align-items: center; gap: 6px; }
+html.bm .bm-block.is-bare { display: flex; align-items: center; gap: 6px; }
+html.bm .bm-block.is-bare .bm-block-body { flex: 1; min-width: 0; }
+
+/* The ⋮⋮ handle starts every title bar, always visible (stronger on hover). The whole title bar drags. */
+html.bm .bm-grip {
+  flex: none; width: 18px; height: 24px; padding: 3px 4px; border: 0; border-radius: 4px;
+  background: none; color: var(--bm-muted); cursor: grab; opacity: .55; transition: opacity .15s, background-color .15s;
+}
+html.bm .bm-grip svg { display: block; width: 100%; height: 100%; fill: currentColor; }
+html.bm .bm-block:hover > .bm-block-head .bm-grip, html.bm .bm-block.is-bare:hover > .bm-grip,
+html.bm .bm-grip:focus-visible, html.bm .bm-grip[aria-expanded="true"] { opacity: 1; }
+html.bm .bm-grip:hover, html.bm .bm-grip[aria-expanded="true"] { background: var(--bm-bg-soft); }
+html.bm .bm-block-head { cursor: grab; }
+html.bm .bm-block-head :is(.bm-block-tools, .bm-block-tools *) { cursor: pointer; }
+html.bm .bm-grip:active, html.bm .bm-block-head:active { cursor: grabbing; }
+
+/* Edit layout: every block outlined, drop areas showing, gap lines visible. */
+html.bm .bm-edit-btn[aria-pressed="true"] { background: var(--bm-accent); border-color: var(--bm-accent); color: var(--bm-on-accent); }
+html.bm .bm-layout.is-editing .bm-block { outline: 2px dashed var(--bm-accent); outline-offset: 5px; }
+html.bm .bm-layout.is-editing .bm-grip { opacity: 1; }
+html.bm .bm-layout.is-editing .bm-col-empty[hidden] { display: grid; min-height: 56px; }
+
+html.bm .bm-fold-head { display: flex; align-items: center; gap: 6px; padding: 2px 0; border: 0; background: none; color: inherit; cursor: pointer; text-align: left; }
+html.bm .bm-fold-head::after { content: "\25BE"; font-size: .75rem; color: var(--bm-muted); transition: rotate .25s var(--bm-ease); }
+html.bm .bm-fold-head[aria-expanded="false"]::after { rotate: -90deg; }
+html.bm .bm-block-body[hidden] { display: none; }
+
+/* While a block is dragged: it fades, the drop areas show, and a line (stack here) or a bar on a
+ * block's side (new column here) marks where it will land. */
+html.bm .bm-block.is-dragging { opacity: .35; }
+html.bm .bm-layout.is-arranging .bm-col { outline: 2px dashed var(--bm-line); outline-offset: 8px; }
+html.bm .bm-drop-line { height: 4px; margin: -13px 0 -13px; border-radius: 2px; background: var(--bm-accent); pointer-events: none; }
+html.bm .bm-block:is(.is-drop-left, .is-drop-right)::after {
+  content: ""; position: absolute; top: -4px; bottom: -4px; width: 6px; border-radius: 3px; background: var(--bm-accent); pointer-events: none;
+}
+html.bm .bm-block.is-drop-left::after { left: -18px; }
+html.bm .bm-block.is-drop-right::after { right: -18px; }
+html.bm .bm-col-empty {
+  display: grid; place-items: center; min-height: 80px; border: 2px dashed var(--bm-line); border-radius: var(--bm-radius);
+  color: var(--bm-muted); font-size: .85rem;
+}
+html.bm .bm-col-empty[hidden] { display: none; }
+
+/* ---- Menus: the handle's menu and the Customise panel ---- */
+html.bm .bm-menu {
+  position: absolute; z-index: 1000; top: calc(100% + 4px); left: -24px; min-width: 190px; padding: 6px;
+  background: var(--bm-surface); color: var(--bm-text); border: var(--bm-border-strong) solid var(--bm-line);
+  border-radius: var(--bm-radius-sm); box-shadow: 0 8px 24px rgba(0, 0, 0, .14);
+}
+html.bm .bm-menu-item {
+  display: flex; align-items: center; gap: 12px; width: 100%; padding: 6px 8px; border: 0; border-radius: 4px;
+  background: none; color: inherit; font: .88rem var(--bm-font); text-align: left; cursor: pointer;
+}
+html.bm .bm-menu-item span { flex: 1; }
+html.bm .bm-menu-item:hover, html.bm .bm-menu-item:focus-visible { background: var(--bm-bg-soft); outline: none; }
+html.bm .bm-menu-item kbd { font-size: .7rem; color: var(--bm-muted); }
+html.bm .bm-menu-sep { margin: 5px 2px; border: 0; border-top: var(--bm-border) solid var(--bm-line); }
+
+html.bm .bm-custom-btn {
+  padding: 5px 12px; border: var(--bm-border) solid var(--bm-line); border-radius: var(--bm-radius-sm);
+  background: var(--bm-surface); color: var(--bm-text); font: var(--bm-weight-head) .82rem var(--bm-font); cursor: pointer;
+}
+html.bm .bm-custom-btn:hover, html.bm .bm-custom-btn[aria-expanded="true"] { background: var(--bm-bg-soft); }
+html.bm .bm-custom-btn[hidden] { display: none; }
+html.bm .bm-menu.bm-custom { left: auto; right: 0; width: min(340px, calc(100vw - 32px)); padding: 12px 14px 10px; }
+html.bm .bm-custom-h { margin: 10px 0 6px; font: var(--bm-weight-head) .8rem var(--bm-font); color: var(--bm-muted); }
+html.bm .bm-custom-h:first-child { margin-top: 0; }
+html.bm .bm-opts { display: grid; gap: 6px; }
+html.bm .bm-opts-theme { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+html.bm .bm-opts-2 { grid-template-columns: 1fr 1fr; }
+html.bm .bm-opt {
+  display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 7px 4px 6px; min-width: 0;
+  border: var(--bm-border) solid var(--bm-line); border-radius: var(--bm-radius-sm); background: var(--bm-surface);
+  color: var(--bm-text); font: .74rem / 1.15 var(--bm-font); text-align: center; cursor: pointer;
+}
+html.bm .bm-opts-2 .bm-opt { font-size: .85rem; padding: 6px; }
+html.bm .bm-opt:hover { background: var(--bm-bg-soft); }
+html.bm .bm-opt[aria-pressed="true"] { border-color: var(--bm-accent); box-shadow: inset 0 0 0 1px var(--bm-accent); background: var(--bm-accent-soft); }
+/* Three dots for each theme. */
+html.bm .bm-theme-sw { display: flex; }
+html.bm .bm-theme-sw i { width: 14px; height: 14px; margin-left: -4px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, .25); }
+html.bm .bm-theme-sw i:first-child { margin-left: 0; }
+html.bm .bm-custom-blocks { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; }
+html.bm .bm-custom-check { display: flex; align-items: center; gap: 7px; margin: 0; padding: 3px 0; font-size: .86rem; cursor: pointer; }
+html.bm .bm-custom-check input { accent-color: var(--bm-accent); }
+html.bm .bm-custom-foot { display: flex; justify-content: flex-end; margin-top: 10px; padding-top: 8px; border-top: var(--bm-border) solid var(--bm-line); }
+
+/* ---- Courses: a grid of compact cards, or a slider ---- */
 html.bm .bm-course-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+/* The slider: one row that scrolls sideways (trackpad, shift+wheel, the arrows, or Tab). Padding keeps
+ * hover shadows from being clipped by the scroller. */
+html.bm .bm-course-grid.is-slider {
+  grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 240px;
+  overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scroll-padding-inline: 4px;
+  padding: 4px 14px 14px 4px; margin: -4px -14px -14px -4px; scrollbar-width: thin;
+}
+html.bm .bm-course-grid.is-slider > .bm-course { scroll-snap-align: start; }
+html.bm .bm-seg { display: inline-flex; border: var(--bm-border) solid var(--bm-line); border-radius: var(--bm-radius-sm); overflow: hidden; }
+html.bm .bm-seg-btn { display: grid; place-items: center; width: 30px; height: 26px; padding: 0; border: 0; background: var(--bm-surface); color: var(--bm-muted); cursor: pointer; }
+html.bm .bm-seg-btn + .bm-seg-btn { border-left: var(--bm-border) solid var(--bm-line); }
+html.bm .bm-seg-btn svg { width: 14px; height: 14px; fill: currentColor; }
+html.bm .bm-seg-btn:hover { background: var(--bm-bg-soft); color: var(--bm-text); }
+html.bm .bm-seg-btn[aria-pressed="true"] { background: var(--bm-chip-on); color: var(--bm-chip-on-text); }
+html.bm .bm-strip-btn {
+  flex: none; width: 26px; height: 26px; display: grid; place-items: center; padding: 0;
+  font: var(--bm-weight-head) 1.1rem/1 var(--bm-font-display); color: var(--bm-text);
+  background: var(--bm-surface); border: var(--bm-border) solid var(--bm-line); border-radius: var(--bm-radius-pill); cursor: pointer;
+}
+html.bm .bm-strip-btn:hover:not(:disabled) { background: var(--bm-bg-soft); }
+html.bm .bm-strip-btn:disabled { opacity: .35; cursor: default; }
+html.bm .bm-strip-btn[hidden] { display: none; }
+
 html.bm .bm-course {
   position: relative; display: flex; flex-direction: column; gap: 6px; padding: 12px 12px 10px; min-width: 0;
   background: var(--bm-surface); border: var(--bm-border) solid var(--bm-line); border-top: 5px solid var(--c);
   border-radius: var(--bm-radius); cursor: grab;
 }
 html.bm .bm-course.is-dragging { opacity: .45; cursor: grabbing; }
-html.bm .bm-course-head { display: flex; align-items: flex-start; gap: 8px; }
+html.bm .bm-course-head { display: flex; align-items: flex-start; gap: 6px; }
 html.bm .bm-course-main { flex: 1; min-width: 0; display: flex; flex-direction: column; color: var(--bm-text); text-decoration: none; }
 html.bm .bm-course-main:hover { color: var(--bm-text); text-decoration: none; }
 html.bm .bm-course-main:hover .bm-course-name { text-decoration: underline; text-underline-offset: 3px; }
@@ -33,13 +182,12 @@ html.bm .bm-course-name {
 html.bm .bm-course-week { min-height: 1.2em; color: var(--bm-muted); }
 html.bm .bm-course-actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 6px; }
 html.bm .bm-cbtn {
-  display: flex; align-items: center; justify-content: center; gap: 4px; padding: 5px 4px; min-width: 0;
+  position: relative; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 5px 4px; min-width: 0;
   border: var(--bm-border) solid var(--bm-line); border-radius: var(--bm-radius-sm); background: var(--bm-surface);
   color: var(--bm-text); font: var(--bm-weight-strong) .78rem var(--bm-font); text-decoration: none; white-space: nowrap;
 }
 html.bm .bm-cbtn:hover { background: var(--bm-bg-soft); color: var(--bm-text); text-decoration: none; }
 html.bm .bm-cbtn.has-count { border-color: var(--bm-accent); }
-html.bm .bm-cbtn { position: relative; }
 /* The count sits on the button's corner so the label never gets squeezed. */
 html.bm .bm-count {
   position: absolute; top: -8px; right: -6px; z-index: 1; min-width: 18px; padding: 0 4px;
@@ -52,23 +200,18 @@ html.bm .bm-swatches { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 4p
 html.bm .bm-swatch { width: 22px; height: 22px; padding: 0; border-radius: 50%; background: var(--c); border: 2px solid var(--bm-text); cursor: pointer; }
 html.bm .bm-swatch.is-reset { background: var(--bm-surface); color: var(--bm-text); font-size: .75rem; line-height: 1; }
 
-/* ---- Right column ---- */
-html.bm .bm-home-side { display: grid; gap: 22px; align-content: start; min-width: 0; }
-html.bm .bm-side-block { min-width: 0; }
-html.bm .bm-panel-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-html.bm .bm-panel-head .bm-sec-label { margin: 0; }
-html.bm .bm-fold-head { display: flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; text-align: left; }
-html.bm .bm-fold-head::after { content: "\25BE"; font-size: .75rem; color: var(--bm-muted); transition: rotate .25s var(--bm-ease); }
-html.bm .bm-fold-head[aria-expanded="false"]::after { rotate: -90deg; }
-html.bm .bm-news-panel:has(.bm-fold-head[aria-expanded="false"]) .bm-panel-head { margin-bottom: 0; }
-html.bm .bm-open-forums[hidden] { display: none; }
+/* The small pin on dashboard items: shows on hover, stays once pinned. */
+html.bm .bm-pin.bm-pin-sm { position: static; translate: none; flex: none; width: 24px; height: 24px; padding: 4px; background: none; }
+html.bm :is(.bm-course, .bm-due-row, .bm-news-row):hover .bm-pin-sm { opacity: 1; }
+html.bm .bm-course-head .bm-pin-sm { margin-top: -3px; }
 
-/* To do */
+/* ---- To do ---- */
 html.bm .bm-due-group .bm-h3 { margin: 10px 0 4px; font-size: .72rem; }
 html.bm .bm-due-group:first-child .bm-h3 { margin-top: 0; }
 html.bm .bm-due-group.is-overdue .bm-h3, html.bm .bm-due-group.is-overdue .bm-due-count { color: var(--bm-danger); }
-html.bm .bm-due-items, html.bm .bm-news-list, html.bm .bm-pin-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-html.bm .bm-due-row { display: flex; align-items: center; gap: 6px; }
+/* minmax(0, 1fr) stops a long deadline name from widening the column past the page edge. */
+html.bm .bm-due-items, html.bm .bm-news-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+html.bm .bm-due-row, html.bm .bm-news-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
 html.bm .bm-due-item {
   flex: 1; min-width: 0; display: flex; gap: 8px; align-items: center; padding: 6px 8px; color: var(--bm-text); text-decoration: none;
   border-left: 4px solid var(--c, var(--bm-line)); border-radius: var(--bm-radius-sm);
@@ -93,23 +236,63 @@ html.bm .bm-due-row.is-done .bm-due-item { opacity: .55; }
 html.bm .bm-due-row.is-done .bm-due-name { text-decoration: line-through; text-decoration-thickness: 2px; }
 @media (prefers-reduced-motion: reduce) { html.bm .bm-check :is(circle, path) { transition: none; } }
 
-/* Forums */
+/* ---- Forums ---- */
+html.bm .bm-open-forums[hidden] { display: none; }
 html.bm .bm-news-item {
-  display: flex; flex-direction: column; padding: 6px 8px; color: var(--bm-text); text-decoration: none;
+  flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 6px 8px; color: var(--bm-text); text-decoration: none;
   border-left: 4px solid var(--c, var(--bm-line)); border-radius: var(--bm-radius-sm);
 }
 html.bm .bm-news-item:hover { background: var(--bm-bg-soft); text-decoration: none; color: var(--bm-text); }
 html.bm .bm-news-top { display: flex; align-items: baseline; gap: 8px; }
 html.bm .bm-news-title { flex: 1; min-width: 0; font-weight: var(--bm-weight-strong); font-size: .92rem; overflow-wrap: anywhere; }
 
-/* Pinned */
-html.bm .bm-pin-list li { display: flex; align-items: center; gap: 8px; }
-html.bm .bm-pin-item {
-  flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 6px 8px; color: var(--bm-text); text-decoration: none;
-  border-left: 4px solid var(--c, var(--bm-line)); border-radius: var(--bm-radius-sm);
+/* ---- Pinboard ---- */
+html.bm .bm-tool-btn {
+  padding: 2px 8px; border: var(--bm-border) solid var(--bm-line); border-radius: var(--bm-radius-pill);
+  background: var(--bm-surface); color: var(--bm-text); font: var(--bm-weight-strong) .78rem var(--bm-font); cursor: pointer;
 }
-html.bm .bm-pin-item:hover { background: var(--bm-bg-soft); color: var(--bm-text); text-decoration: none; }
-html.bm .bm-pin-title { font-weight: var(--bm-weight-strong); font-size: .92rem; overflow-wrap: anywhere; }
+html.bm .bm-tool-btn:hover { background: var(--bm-bg-soft); }
+html.bm .bm-board { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+/* The board sizes itself to its column, not the window: in a narrow column the cards become a list. */
+html.bm .bm-pinboard { container-type: inline-size; }
+@container (max-width: 400px) {
+  html.bm .bm-board { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  html.bm .bm-pin-card { min-height: 0; }
+}
+html.bm .bm-pin-card {
+  position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 68px;
+  background: var(--bm-surface); border: var(--bm-border) solid var(--bm-line); border-top: 4px solid var(--c, var(--bm-line));
+  border-radius: var(--bm-radius-sm); cursor: grab;
+}
+html.bm .bm-pin-card.is-dragging { opacity: .4; }
+html.bm .bm-pin-item { flex: 1; display: flex; flex-direction: column; gap: 2px; padding: 8px 26px 8px 10px; color: var(--bm-text); text-decoration: none; }
+html.bm .bm-pin-item:hover { color: var(--bm-text); text-decoration: none; }
+html.bm .bm-pin-item:hover .bm-pin-title { text-decoration: underline; text-underline-offset: 2px; }
+html.bm .bm-pin-kind { color: var(--bm-muted); }
+html.bm .bm-pin-title { font-weight: var(--bm-weight-strong); font-size: .9rem; line-height: 1.3; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+html.bm .bm-pin-when { font-family: var(--bm-font-mono); font-variant-numeric: tabular-nums; }
+html.bm .bm-pin-x {
+  position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 50%;
+  background: none; color: var(--bm-muted); font: 1rem/1 var(--bm-font); cursor: pointer; opacity: 0; transition: opacity .15s;
+}
+html.bm .bm-pin-card:hover .bm-pin-x, html.bm .bm-pin-x:focus-visible { opacity: 1; }
+html.bm .bm-pin-x:hover { background: var(--bm-bg-soft); color: var(--bm-text); }
+/* Notes: a tinted card you type on. */
+html.bm .bm-pin-card.is-note { background: color-mix(in srgb, var(--c) 22%, var(--bm-surface)); border-top-color: var(--c); }
+html.bm .bm-pin-bar { display: flex; align-items: center; height: 24px; padding: 4px 4px 0 8px; }
+html.bm .bm-pin-card.is-note .bm-pin-x { position: static; }
+html.bm .bm-note-color { width: 14px; height: 14px; padding: 0; border-radius: 50%; border: 1px solid var(--bm-line); background: var(--c); cursor: pointer; }
+html.bm .bm-note-text {
+  box-sizing: border-box; flex: 1; width: 100%; min-height: 3.6em; padding: 2px 10px 8px; border: 0; background: transparent; color: var(--bm-text);
+  font: .9rem / 1.4 var(--bm-font); resize: none; field-sizing: content; cursor: text;
+}
+html.bm .bm-note-text:focus { outline: none; }
+html.bm .bm-pin-card.is-note:focus-within { box-shadow: 0 0 0 2px var(--bm-accent); }
+html.bm .bm-board-empty { margin: 0; }
+html.bm .bm-link-form { display: grid; gap: 6px; margin-bottom: 10px; padding: 10px; border: var(--bm-border) solid var(--bm-line); border-radius: var(--bm-radius-sm); background: var(--bm-surface); }
+html.bm .bm-input { box-sizing: border-box; width: 100%; padding: 5px 8px; border: var(--bm-border) solid var(--bm-line); border-radius: var(--bm-radius-sm); background: var(--bm-bg); color: var(--bm-text); font: .88rem var(--bm-font); }
+html.bm .bm-form-row { display: flex; align-items: center; gap: 10px; }
+html.bm .bm-form-msg { color: var(--bm-danger); }
 
 /* Feedback tracker */
 html.bm .bm-feedback-link {
@@ -118,6 +301,9 @@ html.bm .bm-feedback-link {
 }
 html.bm .bm-feedback-link:hover { background: var(--bm-bg-soft); color: var(--bm-text); text-decoration: none; }
 html.bm .bm-feedback-link span { font-size: 1.3rem; line-height: 1; color: var(--bm-accent); }
+
+/* Screen-reader-only announcements (BM.live). */
+html.bm .bm-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* ---- Toast (BM.toast) ---- */
 html.bm .bm-toast {
@@ -128,7 +314,7 @@ html.bm .bm-toast {
 }
 html.bm .bm-toast-btn { flex: none; padding: 0; border: 0; background: none; color: inherit; font: inherit; font-weight: var(--bm-weight-head); text-decoration: underline; cursor: pointer; }
 @keyframes bm-toast-in { from { opacity: 0; translate: -50% 12px; } }
-@media (prefers-reduced-motion: reduce) { html.bm .bm-toast { animation: none; } }
+@media (prefers-reduced-motion: reduce) { html.bm .bm-toast { animation: none; } html.bm .bm-grip, html.bm .bm-pin-x { transition: none; } }
 
 /* Confetti from BM.burst: Pop! only. */
 html.bm .bm-burst { display: none; }

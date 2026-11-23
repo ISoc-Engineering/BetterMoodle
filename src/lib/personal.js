@@ -27,12 +27,19 @@ BM.colors = Object.assign(storedMap('colors'), {
 });
 BM.courseColor = (courseId) => BM.colors.cache[courseId] || BM.PALETTE[Math.abs(Number(courseId) || 0) % BM.PALETTE.length];
 
-// ---- Pins: files, weeks and forum posts you want on your dashboard ----
+// ---- Pins: the dashboard's Pinboard (files, weeks, forum posts, deadlines, courses, links, notes) ----
+// Order: anything pinned since you last rearranged comes first (newest first), then your dragged order.
 BM.pins = Object.assign(storedMap('pins'), {
   key: (p) => `${p.kind}:${p.id}`,
-  async list() { return Object.values(await this.all()).sort((a, b) => b.at - a.at); },
+  async list() {
+    const rank = (p) => (p.pos == null ? -1e15 - p.at : p.pos);
+    return Object.values(await this.all()).sort((a, b) => rank(a) - rank(b));
+  },
   async has(p) { return !!(await this.all())[this.key(p)]; },
-  toggle(p, on) { return this.update((v) => { if (on) v[this.key(p)] = { ...p, at: Date.now() }; else delete v[this.key(p)]; }); },
+  toggle(p, on) { return this.update((v) => { if (on) { const { pos, ...rest } = p; v[this.key(p)] = { ...rest, at: Date.now() }; } else delete v[this.key(p)]; }); },
+  // Change a pin in place (a note's text or colour), keeping its spot.
+  save(p) { return this.update((v) => { const k = this.key(p); const { pos, at, ...rest } = p; if (v[k]) v[k] = { ...v[k], ...rest }; }); },
+  reorder(keys) { return this.update((v) => { keys.forEach((k, i) => { if (v[k]) v[k].pos = i; }); }); },
 });
 
 // ---- Files you've opened (for the week progress rings) ----

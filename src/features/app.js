@@ -15,7 +15,7 @@ BM.app = {
 
   instantPages() {
     if (!HTMLScriptElement.supports?.('speculationrules') || document.querySelector('script[data-bm-speculation]')) return;
-    const allowed = ['a[href$="/my/"]', 'a[href*="/course/view.php?id="]', 'a[href*="/mod/forum/view.php?id="]', 'a[href*="/mod/forum/index.php?id="]'];
+    const allowed = ['a[href$="/my/"]', 'a[href*="/course/view.php?id="]', 'a[href*="/mod/forum/view.php?id="]', 'a[href*="/mod/forum/index.php?id="]', 'a[href*="/mod/hsuforum/view.php?id="]'];
     const never = ['[href*="sesskey"]', '[href*="logout"]', '[href*="post.php"]', '[href*="discuss.php"]', '[target="_blank"]', '[download]'];
     const s = document.createElement('script');
     s.type = 'speculationrules';

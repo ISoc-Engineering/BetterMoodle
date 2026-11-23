@@ -68,13 +68,21 @@ BM.forum = {
 
     this.build(anchor);
     await this.loadAll(); // errors go to init(), which falls back to the classic page for this visit only
-    this.openFromHash();
+    const fromHash = /post=/.test(location.hash);
+    await this.openFromHash();
+    // Wide screens: the reading pane starts with the latest conversation (a post with replies, not a
+    // pinned notice) rather than sitting empty.
+    if (!fromHash && this.wide()) {
+      const list = this.visible();
+      const d = list.find((x) => !x.pinned && x.replies) || list.find((x) => !x.pinned) || list[0];
+      if (d) this.openReader(d, { auto: true });
+    }
     return '';
   },
 
   // From the dashboard or a live alert: #post=<discussion id> scrolls to that post and opens its replies.
   async openFromHash() {
-    const id = location.hash.match(/post=(\d+)/)?.[1];
+    const id = location.hash.match(/post=(h?\d+)/)?.[1];
     if (!id) return;
     history.replaceState(null, '', location.pathname + location.search);
     const d = this.posts.find((x) => String(x.id) === id);
@@ -85,7 +93,9 @@ BM.forum = {
     const card = this.feedEl.querySelector(`.bm-post[data-id="${id}"]`);
     if (!card) return;
     card.scrollIntoView({ block: 'start' });
+    this.targetId = d.id;
     card.classList.add('is-target');
+    if (this.wide()) { this.openReader(d); return; }
     const btn = card.querySelector('.bm-post-foot [aria-expanded]');
     if (btn && !btn.disabled && btn.getAttribute('aria-expanded') !== 'true') btn.click();
   },
@@ -124,7 +134,9 @@ BM.forum = {
         h('div', { class: 'bm-filterbar bm-feed-tools' }, this.input, h('div', { class: 'bm-spacer' }),
           select('Show', this.SHOW, 'show'), select('Sort', this.SORTS, 'sort')),
         this.feedEl,
-        h('div', { class: 'bm-forum-more' }, this.moreEl)));
+        h('div', { class: 'bm-forum-more' }, this.moreEl)),
+      this.readerEl = h('aside', { class: 'bm-reader bm-panel', 'aria-label': 'Discussion' }));
+    this.closeReader();
     this.root = h('div', { id: 'bm-forum', class: 'bm-root' },
       h('div', { class: 'bm-forum-top' }, h('div', { class: 'bm-spacer' }), this.toggle), this.layout);
     this.anchor = anchor;
@@ -174,7 +186,7 @@ BM.forum = {
       onclick: () => {
         this.state.forum = key;
         const f = this.forums.find((x) => x.id === key);
-        history.replaceState(null, '', f ? `/mod/forum/view.php?id=${f.cmid}` : `/mod/forum/index.php?id=${this.courseId}`);
+        history.replaceState(null, '', f ? `/mod/${f.mod || 'forum'}/view.php?id=${f.cmid}` : `/mod/forum/index.php?id=${this.courseId}`);
         this.renderTabs();
         this.render();
       },
@@ -188,7 +200,7 @@ BM.forum = {
     const target = chosen ? (chosen.postForumId ? chosen : null) : this.forums.find((f) => f.postForumId && f.type !== 'news');
     this.newPostEl.hidden = !target;
     if (target) {
-      this.newPostEl.href = `/mod/forum/post.php?forum=${target.postForumId}`;
+      this.newPostEl.href = `/mod/${target.mod || 'forum'}/post.php?forum=${target.postForumId}`;
       this.newPostEl.textContent = this.state.forum === 'all' ? `New post in ${target.name}` : 'New post';
     }
   },
@@ -208,7 +220,7 @@ BM.forum = {
       const got = await BM.forumData.discussions(f, page);
       this.next.set(f.id, got.more ? page + 1 : -1);
       f.unread += got.items.reduce((n, d) => n + d.unread, 0);
-      return got.items.map((d) => ({ ...d, forumId: f.id, forumName: f.name, forumCmid: f.cmid }));
+      return got.items.map((d) => ({ ...d, mod: d.mod || f.mod || 'forum', forumId: f.id, forumName: f.name, forumCmid: f.cmid }));
     });
     // Every forum page failing (rather than one) means something is wrong: let init() show the note.
     if (todo.length && pages.every((p) => p === undefined)) throw new Error("the forum pages didn't load");
@@ -245,9 +257,10 @@ BM.forum = {
     const first = !this.feedEl.querySelector('.bm-post');
     const pinned = this.state.sort !== 'replies' ? list.filter((d) => d.pinned) : [];
     const rest = list.filter((d) => !pinned.includes(d));
-    this.feedEl.replaceChildren(
+    // replaceChildren() prints null as the word "null", so leave the empty headings out entirely.
+    this.feedEl.replaceChildren(...[
       pinned.length ? h('h3', { class: 'bm-h3' }, 'Pinned') : null, ...pinned.map((d) => this.post(d)),
-      pinned.length && rest.length ? h('h3', { class: 'bm-h3' }, 'Latest') : null, ...rest.map((d) => this.post(d)));
+      pinned.length && rest.length ? h('h3', { class: 'bm-h3' }, 'Latest') : null, ...rest.map((d) => this.post(d))].filter(Boolean));
     if (first) BM.enter(this.feedEl.querySelectorAll('.bm-post'));
     this.watch();
   },
@@ -279,7 +292,8 @@ BM.forum = {
         d.created = d.created || root.created;
       }
       d.thread = replies;
-      d.replies = d.replies || replies.length;
+      // The discussion page is the truth: the list's count can be missing or out of date.
+      d.replies = Math.max(d.replies || 0, replies.length);
       const latest = replies.reduce((m, p) => (p.created > (m?.created || 0) ? p : m), null);
       if (latest) { d.lastTs = d.lastTs || latest.created; d.lastBy = d.lastBy || latest.author; }
       d.search = `${d.title} ${d.author} ${BM.text(d.message.replace(/<[^>]+>/g, ' '))}`.toLowerCase();
@@ -293,11 +307,17 @@ BM.forum = {
     if (old.querySelector('.bm-post-foot [aria-expanded="true"]')) {
       old.classList.add('is-loaded');
       if (!d.failed) old.querySelector('.bm-post-body').replaceChildren(this.body(d.message));
-      if (d.postId && !d.locked) old.querySelector('.bm-post-foot a.bm-post-action')?.setAttribute('href', `/mod/forum/post.php?reply=${d.postId}`);
+      if (d.postId && !d.locked) old.querySelector('.bm-post-foot a.bm-post-action')?.setAttribute('href', this.replyUrl(d, d.postId));
       return;
     }
     old.replaceWith(this.post(d));
   },
+
+  // Moodle's reply form for one post, in whichever forum type the discussion lives.
+  replyUrl(d, postId) { return `/mod/${d.mod || 'forum'}/post.php?reply=${postId}`; },
+
+  // Wide screens read a discussion in the pane on the right; narrower ones open it under the post.
+  wide() { return matchMedia('(min-width: 1320px)').matches && !!this.readerEl; },
 
   avatar(name, url, small) {
     const h = BM.h;
@@ -317,6 +337,13 @@ BM.forum = {
     return frag;
   },
 
+  // The replies button. Before the discussion page is read we don't trust a 0 from the list.
+  replyLabel(d) {
+    if (!d.loaded && !d.replies) return 'Replies';
+    if (!d.replies) return 'No replies yet';
+    return d.replies === 1 ? 'View 1 reply' : `View ${d.replies} replies`;
+  },
+
   post(d) {
     const h = BM.h;
     const body = h('div', { class: 'bm-post-body' }, d.loaded
@@ -327,35 +354,57 @@ BM.forum = {
       more.textContent = open ? 'Show less' : 'Show more';
     } }, 'Show more');
     const thread = h('div', { class: 'bm-thread', hidden: true });
-    const repliesBtn = h('button', { class: 'bm-post-action', 'aria-expanded': 'false', disabled: !d.replies },
-      d.replies ? (d.replies === 1 ? 'View 1 reply' : `View ${d.replies} replies`) : 'No replies yet');
-    const art = h('article', { class: 'bm-post' + (d.unread ? ' is-unread' : '') + (d.pinned ? ' is-pinned' : '') + (d.loaded ? ' is-loaded' : ''), dataset: { id: d.id } },
+    const repliesBtn = h('button', { class: 'bm-post-action', 'aria-expanded': 'false', disabled: d.loaded && !d.replies && !d.failed }, this.replyLabel(d));
+    const title = h('a', { href: d.url }, d.title);
+    const art = h('article', { class: 'bm-post' + (d.unread ? ' is-unread' : '') + (d.pinned ? ' is-pinned' : '') + (d.loaded ? ' is-loaded' : '') + (this.reading === d.id ? ' is-reading' : '') + (this.targetId === d.id ? ' is-target' : ''), dataset: { id: d.id } },
       h('header', { class: 'bm-post-head' },
         this.avatar(d.author, d.avatar),
         h('div', { class: 'bm-post-who' },
           h('span', { class: 'bm-post-author' }, d.author),
           h('span', { class: 'bm-muted bm-small' },
             this.state.forum === 'all' ? h('button', { class: 'bm-post-forum', onclick: () => this.tabsEl.querySelector(`[data-forum="${d.forumId}"]`)?.click() }, d.forumName) : null,
-            this.state.forum === 'all' ? ' · ' : null,
+            this.state.forum === 'all' && d.created ? ', ' : null,
             d.created ? h('time', { datetime: new Date(d.created * 1000).toISOString(), title: BM.fmtTime(d.created) }, BM.ago(d.created)) : null)),
         h('div', { class: 'bm-spacer' }),
         d.pinned ? h('span', { class: 'bm-tag' }, 'Pinned') : null,
         d.locked ? h('span', { class: 'bm-tag' }, 'Locked') : null,
         d.unread ? h('span', { class: 'bm-badge' }, `${d.unread} new`) : null),
-      h('h4', { class: 'bm-post-title' }, h('a', { href: d.url }, d.title)),
+      h('h4', { class: 'bm-post-title' }, title),
       body, more,
+      this.preview(d, repliesBtn),
       h('footer', { class: 'bm-post-foot' },
         repliesBtn,
         d.replies && d.lastBy && d.lastTs ? h('span', { class: 'bm-muted bm-small' }, `Latest from ${d.lastBy}, ${BM.ago(d.lastTs)}`) : null,
         h('div', { class: 'bm-spacer' }),
-        d.locked ? null : h('a', { class: 'bm-post-action', href: d.postId ? `/mod/forum/post.php?reply=${d.postId}` : d.url }, 'Reply'),
+        d.locked ? null : h('a', { class: 'bm-post-action', href: d.postId ? this.replyUrl(d, d.postId) : d.url }, 'Reply'),
         this.pinButton(d),
         h('a', { class: 'bm-post-action', href: d.url }, 'Open in Moodle')),
       thread);
     repliesBtn.addEventListener('click', () => this.toggleThread(d, thread, repliesBtn, art));
+    // On wide screens the title opens the discussion in the reading pane (Ctrl/Cmd-click still opens Moodle).
+    title.addEventListener('click', (e) => {
+      if (!this.wide() || e.ctrlKey || e.metaKey || e.shiftKey || e.button) return;
+      e.preventDefault();
+      this.openReader(d);
+    });
     // Only offer "Show more" when the post is actually cut off.
     requestAnimationFrame(() => { more.hidden = body.scrollHeight <= body.clientHeight + 2; body.classList.toggle('is-clamped', !more.hidden); });
     return art;
+  },
+
+  // The newest two replies under the post, like a social feed, so you see the conversation without a click.
+  preview(d, repliesBtn) {
+    const h = BM.h;
+    const list = (d.thread || []).slice().sort((a, b) => (b.created || 0) - (a.created || 0)).slice(0, 2).reverse();
+    if (!list.length) return null;
+    const text = (p) => { const t = BM.text((p.message || '').replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim(); return t.length > 180 ? `${t.slice(0, 177)}…` : t; };
+    return h('ol', { class: 'bm-reply-preview', 'aria-label': 'Latest replies' }, list.map((p) =>
+      h('li', { class: 'bm-preview-item', onclick: (e) => { if (!e.target.closest('a')) repliesBtn.click(); } },
+        this.avatar(p.author, p.avatar, true),
+        h('div', { class: 'bm-preview-text' },
+          h('span', { class: 'bm-post-author' }, p.author || 'Someone'),
+          p.created ? h('span', { class: 'bm-muted bm-small' }, ` ${BM.ago(p.created)}`) : null,
+          h('p', {}, text(p) || '(no text)')))));
   },
 
   pinButton(d) {
@@ -375,9 +424,11 @@ BM.forum = {
   },
 
   async toggleThread(d, thread, btn, art) {
+    if (this.wide()) { this.openReader(d); return; }
     const open = btn.getAttribute('aria-expanded') !== 'true';
     btn.setAttribute('aria-expanded', String(open));
-    btn.textContent = open ? 'Hide replies' : (d.replies === 1 ? 'View 1 reply' : `View ${d.replies} replies`);
+    btn.textContent = open ? 'Hide replies' : this.replyLabel(d);
+    art.querySelector('.bm-reply-preview')?.toggleAttribute('hidden', open);
     if (!open) { BM.slide(thread, false, () => { thread.hidden = btn.getAttribute('aria-expanded') !== 'true'; }); return; }
     thread.hidden = false;
     if (!thread.dataset.loaded) {
@@ -385,6 +436,7 @@ BM.forum = {
       try {
         const { root, replies } = await BM.forumData.thread(d.id);
         if (root && !d.postId) d.postId = root.id;
+        d.replies = Math.max(d.replies || 0, replies.length);
         thread.replaceChildren(this.threadTree(replies, d));
         thread.dataset.loaded = '1';
       } catch (e) {
@@ -392,8 +444,62 @@ BM.forum = {
       }
     }
     BM.slide(thread, true);
-    // Reading the replies here counts as seen.
-    if (d.unread) { d.unread = 0; art.classList.remove('is-unread'); art.querySelector('.bm-post-head .bm-badge')?.remove(); }
+    this.markRead(d, art);
+  },
+
+  // Reading the replies here counts as seen.
+  markRead(d, art) {
+    if (!d.unread) return;
+    d.unread = 0;
+    art?.classList.remove('is-unread');
+    art?.querySelector('.bm-post-head .bm-badge')?.remove();
+  },
+
+  // ---- Reading pane (wide screens): the whole discussion, opening post and every reply ----
+  // auto: opened for you on arrival, so it doesn't count as read.
+  async openReader(d, { auto = false } = {}) {
+    const h = BM.h;
+    this.reading = d.id;
+    for (const c of this.feedEl.querySelectorAll('.bm-post')) c.classList.toggle('is-reading', c.dataset.id === String(d.id));
+    const box = this.readerEl;
+    const close = h('button', { class: 'bm-link-btn', type: 'button', onclick: () => this.closeReader() }, 'Close');
+    const repliesEl = h('div', { class: 'bm-reader-replies' }, h('p', { class: 'bm-muted bm-small' }, 'Loading replies…'));
+    const bodyEl = h('div', { class: 'bm-post-body is-open' }, d.message ? this.body(d.message) : h('p', { class: 'bm-muted' }, 'Loading…'));
+    const countEl = h('h3', { class: 'bm-h3' }, d.replies ? this.replyLabel(d).replace(/^View /, '') : 'Replies');
+    box.replaceChildren(
+      h('div', { class: 'bm-reader-top' }, h('span', { class: 'bm-muted bm-small' }, d.forumName || ''), h('div', { class: 'bm-spacer' }), close),
+      h('h2', { class: 'bm-reader-title' }, d.title),
+      h('div', { class: 'bm-post-head' }, this.avatar(d.author, d.avatar),
+        h('div', { class: 'bm-post-who' }, h('span', { class: 'bm-post-author' }, d.author),
+          d.created ? h('time', { class: 'bm-muted bm-small', datetime: new Date(d.created * 1000).toISOString(), title: BM.fmtTime(d.created) }, BM.ago(d.created)) : null)),
+      bodyEl,
+      h('div', { class: 'bm-reader-actions' },
+        d.locked ? null : h('a', { class: 'bm-btn bm-btn-primary bm-reader-reply', href: d.postId ? this.replyUrl(d, d.postId) : d.url }, 'Reply'),
+        h('a', { class: 'bm-btn', href: d.url }, 'Open in Moodle')),
+      countEl, repliesEl);
+    box.hidden = false;
+    box.scrollTop = 0;
+    try {
+      const { root, replies } = await BM.forumData.thread(d.id);
+      if (this.reading !== d.id) return; // another post was opened meanwhile
+      if (root) {
+        d.postId = d.postId || root.id;
+        bodyEl.replaceChildren(this.body(root.message));
+        box.querySelector('.bm-reader-reply')?.setAttribute('href', this.replyUrl(d, d.postId));
+      }
+      d.replies = Math.max(d.replies || 0, replies.length);
+      countEl.textContent = !replies.length ? 'No replies yet' : replies.length === 1 ? '1 reply' : `${replies.length} replies`;
+      repliesEl.replaceChildren(replies.length ? this.threadTree(replies, d) : '');
+    } catch (e) {
+      repliesEl.replaceChildren(h('p', { class: 'bm-muted bm-small' }, "Couldn't load replies. ", h('a', { href: d.url }, 'Open in Moodle')));
+    }
+    if (!auto) this.markRead(d, this.feedEl.querySelector(`.bm-post[data-id="${d.id}"]`));
+  },
+
+  closeReader() {
+    this.reading = null;
+    for (const c of this.feedEl.querySelectorAll('.bm-post.is-reading')) c.classList.remove('is-reading');
+    this.readerEl.replaceChildren(BM.h('p', { class: 'bm-muted bm-reader-empty' }, 'Pick a post to read it with all its replies.'));
   },
 
   // Replies nested under what they answer, three levels deep at most (deeper ones stay at level three).
@@ -411,7 +517,7 @@ BM.forum = {
           h('span', { class: 'bm-post-author' }, p.author),
           h('time', { class: 'bm-muted bm-small', datetime: new Date(p.created * 1000).toISOString(), title: BM.fmtTime(p.created) }, BM.ago(p.created))),
         h('div', { class: 'bm-reply-body' }, p.deleted ? h('p', { class: 'bm-muted' }, 'This post was deleted.') : this.body(p.message)),
-        d.locked ? null : h('a', { class: 'bm-post-action bm-small', href: `/mod/forum/post.php?reply=${p.id}` }, 'Reply'),
+        d.locked ? null : h('a', { class: 'bm-post-action bm-small', href: this.replyUrl(d, p.id) }, 'Reply'),
         children.length ? branch(children, depth + 1) : null);
     }));
     return roots.length ? branch(roots, 0) : h('p', { class: 'bm-muted bm-small' }, 'No replies yet.');

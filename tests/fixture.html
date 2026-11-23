@@ -46,7 +46,7 @@ try { localStorage.clear(); } catch (_) {}
 // forumpages=fail: the forum pages themselves fail to load (to test the forum view's fallback).
 if (flags.get('forumpages') === 'fail') {
   const real0 = window.fetch;
-  window.fetch = (url, opts) => /\/mod\/forum\/(view|discuss)\.php/.test(String(url)) ? Promise.resolve(new Response('', { status: 500 })) : real0(url, opts);
+  window.fetch = (url, opts) => /\/mod\/(forum|hsuforum)\/(view|discuss)\.php/.test(String(url)) ? Promise.resolve(new Response('', { status: 500 })) : real0(url, opts);
 }
 // Optionally break the forum web services so the dashboard's scraping fallback is exercised.
 if (flags.get('forumapi') === 'fail') {
@@ -78,9 +78,11 @@ if (location.pathname.startsWith('/my/')) {
     </ul></section>
     <section data-block="recent_activity"><a href="/mod/forum/discuss.php?d=55">Week one announcement</a></section>
     <p id="stock">Stock dashboard</p>`;
-} else if (location.pathname.startsWith('/mod/forum/')) {
-  document.body.id = location.pathname.endsWith('index.php') ? 'page-mod-forum-index' : 'page-mod-forum-view';
-  document.body.classList.add('course-101');
+} else if (/^\/mod\/(forum|hsuforum)\//.test(location.pathname)) {
+  const hsu = location.pathname.startsWith('/mod/hsuforum/');
+  document.body.id = location.pathname.endsWith('index.php') ? 'page-mod-forum-index' : hsu ? 'page-mod-hsuforum-view' : 'page-mod-forum-view';
+  // flags: course=<id> for pages that belong to another course (Advanced Forum lives in 102 here)
+  document.body.classList.add(`course-${flags.get('course') || 101}`);
   content.innerHTML = '<p id="stock">Stock forum page</p>';
 } else {
   document.body.id = 'page-course-view-topics';
