@@ -77,14 +77,24 @@ src/lib/util.js          DOM builder (text only, never innerHTML for data), M.cf
 src/lib/store.js         chrome.storage cache per Moodle user; stale-while-revalidate
 src/lib/api.js           Moodle AJAX calls
 src/lib/course-data.js   whole-course model (state API + section-page enrichment), sanitiser for label HTML
+src/lib/forum-data.js    forum feed read from Moodle's forum pages (UCL blocks the forum web services)
+src/lib/personal.js      course colours, pins, opened files, what's new
 src/features/viewer.js   split-view file viewer
+src/features/quicklook.js  Space to preview a file full screen
 src/features/course.js   one-page course view, filter bar, due strip
+src/features/layout.js   movable dashboard blocks (drag, fold, hide)
 src/features/home.js     dashboard
+src/features/forum.js    forums as a course feed
 src/features/palette.js  Ctrl/⌘+K search
+src/features/cursor.js   custom cursor
+src/features/app.js      instant pages, live forum alerts
 src/main.js              on/off switch + routing by <body id>
-src/styles/theme.css     the reskin of theme_ucl
-src/styles/ui.css        BetterMoodle components
-popup/                   on/off toggle
+src/styles/tokens.css    design tokens
+src/styles/base.css      the reskin of theme_ucl
+src/styles/components/   BetterMoodle components (home, course, forum, viewer, palette, common)
+src/styles/themes/       Soft, Sage, Night and Pop! themes
+popup/                   on/off toggle, theme switcher
+tests/                   browser checks against a fake Moodle (python tests/run.py)
 ```
 
 ### UCL markup reference (checked Nov 2026)
