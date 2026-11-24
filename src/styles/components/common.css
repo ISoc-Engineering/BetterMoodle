@@ -1,0 +1,54 @@
+/* Shared building blocks used by every feature: text helpers, headings, buttons, focus. Tokens only. */
+
+html.bm .bm-root { font-family: var(--bm-font); font-weight: var(--bm-weight); color: var(--bm-text); margin: 8px 0 32px; }
+html.bm .bm-muted { color: var(--bm-muted); }
+html.bm .bm-small { font-size: .82rem; }
+html.bm .bm-mono { font-family: var(--bm-font-mono); font-variant-numeric: tabular-nums; }
+html.bm .bm-spacer { flex: 1; }
+html.bm .bm-h2 {
+  font: var(--bm-weight-head) 1.05rem var(--bm-font-display); text-transform: var(--bm-case-head);
+  margin: 0 0 12px; color: var(--bm-text);
+}
+html.bm .bm-h3 {
+  font: var(--bm-weight-head) .72rem var(--bm-font-mono); text-transform: uppercase; letter-spacing: .06em;
+  color: var(--bm-muted); margin: 16px 0 6px;
+}
+html.bm .bm-root kbd, html.bm .bm-palette kbd {
+  font: 500 .75rem var(--bm-font-mono); background: var(--bm-bg-soft); color: var(--bm-text);
+  border: var(--bm-border) solid var(--bm-line); border-radius: 4px; padding: 1px 5px;
+}
+
+/* A panel: the big boxes on the dashboard. */
+html.bm .bm-panel {
+  border: var(--bm-border-strong) solid var(--bm-line); border-radius: var(--bm-radius);
+  padding: 18px 20px; background: var(--bm-surface); box-shadow: var(--bm-shadow-panel); min-width: 0;
+}
+
+/* Anything that lifts on hover uses this one recipe (it's a no-op in themes where --bm-lift is 0). */
+html.bm .bm-btn, html.bm .bm-chip, html.bm .bm-due-pill {
+  transition: transform var(--bm-fast) var(--bm-ease), box-shadow var(--bm-fast), background-color var(--bm-fast), color var(--bm-fast);
+}
+html.bm .bm-btn:hover, html.bm .bm-chip:hover, html.bm .bm-due-pill:hover {
+  transform: translate(calc(-1 * var(--bm-lift)), calc(-1 * var(--bm-lift))) rotate(var(--bm-tilt));
+  box-shadow: var(--bm-shadow-hover);
+}
+html.bm .bm-btn:active, html.bm .bm-chip:active, html.bm .bm-due-pill:active { transform: translate(var(--bm-lift), var(--bm-lift)); box-shadow: none; }
+
+html.bm .bm-btn {
+  font: var(--bm-weight-head) .82rem var(--bm-font-display); text-transform: var(--bm-case-head);
+  color: var(--bm-text); background: var(--bm-surface);
+  border: var(--bm-border) solid var(--bm-line); border-radius: var(--bm-radius-sm); box-shadow: var(--bm-shadow);
+  padding: 4px 10px; cursor: pointer; text-decoration: none; white-space: nowrap;
+}
+html.bm .bm-btn:hover { background: var(--bm-bg-soft); text-decoration: none; color: var(--bm-text); }
+html.bm .bm-btn-primary, html.bm .bm-btn-primary:hover { background: var(--bm-accent); border-color: var(--bm-accent); color: var(--bm-on-accent); }
+html.bm .bm-btn-primary:hover { opacity: .92; }
+html.bm .bm-link-btn {
+  background: none; border: 0; padding: 0; color: var(--bm-muted); font: .82rem var(--bm-font);
+  cursor: pointer; text-decoration: underline; text-underline-offset: 2px;
+}
+html.bm .bm-link-btn:hover { color: var(--bm-text); }
+
+html.bm .bm-root :focus-visible, html.bm .bm-viewer :focus-visible, html.bm .bm-palette :focus-visible {
+  outline: 2px solid var(--bm-accent); outline-offset: 2px;
+}

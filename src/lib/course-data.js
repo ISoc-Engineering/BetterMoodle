@@ -24,12 +24,18 @@ BM.courseData = {
     return 'other';
   },
 
+  // Lecture slides: a file or folder whose name says so. Used by the "Slides" filter chip.
+  SLIDES_RE: /\b(lecture|lec\s?\d|slides?|presentation|ppt)\b/i,
+  isSlides(item) {
+    return ['resource', 'folder'].includes(item.module) && this.SLIDES_RE.test(`${item.name} ${item.badge || ''}`);
+  },
+
   // How the side viewer should treat an item:
   //   'frame' shows it inside the panel, 'card' shows a download/open card, null means a normal link.
   // External links (mod_url) stay normal links so j/k only steps through actual course material.
   viewMode(item) {
     switch (item.module) {
-      case 'page': case 'book': case 'folder': return 'frame';
+      case 'page': case 'book': case 'folder': case 'discussion': return 'frame';
       case 'resource':
         if (!item.type) return 'card';
         return this.PREVIEWABLE.includes(item.type) ? 'frame' : 'card';

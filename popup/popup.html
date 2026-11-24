@@ -15,6 +15,8 @@
     input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s; }
     input:checked { background: #2a5bd7; }
     input:checked::after { transform: translateX(16px); }
+    select { flex: none; font: 500 12.5px system-ui, sans-serif; color: #1b1b1a; background: #fff; border: 1px solid #d6d6d2; border-radius: 6px; padding: 3px 6px; cursor: pointer; }
+    select:disabled { opacity: .4; cursor: default; }
     .keys { font-size: 12px; color: #6b6b68; border-top: 1px solid #e6e6e3; padding-top: 10px; line-height: 1.8; }
     kbd { font: 500 11px system-ui, sans-serif; border: 1px solid #e6e6e3; background: #f6f6f4; border-radius: 4px; padding: 0 4px; }
   </style>
@@ -27,6 +29,16 @@
     <label for="aggressive">
       <span>Aggressive mode<small>Hide General, Module Communication and Module Surveys on course pages</small></span>
       <input type="checkbox" id="aggressive">
+    </label>
+    <label for="theme">
+      <span>Theme<small>Also under Customise on the dashboard. Switches live.</small></span>
+      <select id="theme">
+        <option value="minimal">Minimal</option>
+        <option value="soft">Soft</option>
+        <option value="sage">Sage</option>
+        <option value="pop">Pop!</option>
+        <option value="night">Night</option>
+      </select>
     </label>
     <div class="keys">
       <kbd>Ctrl</kbd>/<kbd>⌘</kbd> <kbd>K</kbd> search everything<br>

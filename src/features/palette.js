@@ -53,8 +53,8 @@ BM.palette = {
 
   async loadIndex() {
     const [courses, deadlines] = await Promise.all([
-      BM.store.swr('courses', 60 * 60 * 1000, () => BM.api.courses(), () => {}),
-      BM.store.swr('deadlines', 5 * 60 * 1000, () => BM.api.deadlines(), () => {}),
+      BM.store.swr('courses-v2', 60 * 60 * 1000, () => BM.api.courses(), () => {}),
+      BM.store.swr('deadlines-v2', 5 * 60 * 1000, () => BM.api.deadlines(), () => {}),
     ]);
     const docs = [];
     for (const c of courses || []) docs.push({ kind: 'Course', title: c.name, sub: c.category, url: `/course/view.php?id=${c.id}` });

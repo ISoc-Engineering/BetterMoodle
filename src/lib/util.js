@@ -48,6 +48,11 @@ BM.cfg = (() => {
   };
 })();
 
+// Where our views go: Moodle's main content box. UCL pages don't all have #page-content (the
+// dashboard doesn't), so fall back through the other wrappers Moodle uses.
+BM.pageAnchor = () => document.querySelector('#page-content') || document.querySelector('#region-main')
+  || document.querySelector('[role="main"]') || document.querySelector('#topofscroll > .row') || document.querySelector('#topofscroll');
+
 BM.courseIdFromBody = () => {
   const c = [...document.body.classList].find((x) => /^course-\d+$/.test(x));
   return c ? Number(c.slice(7)) : 0;
@@ -65,6 +70,22 @@ BM.countdown = (ts) => {
   else if (a < 86400) s = Math.round(a / 3600) + 'h';
   else s = Math.round(a / 86400) + 'd';
   return diff < 0 ? s + ' overdue' : 'in ' + s;
+};
+
+BM.ago = (ts) => {
+  const a = Math.max(0, BM.now() - ts);
+  if (a < 3600) return Math.max(1, Math.round(a / 60)) + 'm ago';
+  if (a < 86400) return Math.round(a / 3600) + 'h ago';
+  if (a < 30 * 86400) return Math.round(a / 86400) + 'd ago';
+  return new Date(ts * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+};
+
+// A ticking countdown: "2d 04:13:09", or "04:13:09" under a day. Seconds in, never negative.
+BM.clock = (secs) => {
+  const t = Math.max(0, Math.floor(secs));
+  const d = Math.floor(t / 86400);
+  const hms = [Math.floor(t / 3600) % 24, Math.floor(t / 60) % 60, t % 60].map((n) => String(n).padStart(2, '0')).join(':');
+  return d ? `${d}d ${hms}` : hms;
 };
 
 BM.fmtTime = (ts) =>
@@ -90,6 +111,88 @@ BM.pool = async (items, limit, fn) => {
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
   return out;
 };
+
+// ---- themes ----
+// Theme names match src/styles/themes/<name>.css ('minimal' has no file: it's the plain tokens.css). 'pop' is the default.
+BM.THEMES = ['minimal', 'soft', 'sage', 'pop', 'night'];
+BM.applyTheme = (name) => {
+  const t = BM.THEMES.includes(name) ? name : 'pop';
+  document.documentElement.dataset.bmTheme = t;
+  try { localStorage.setItem('bm:theme', t); } catch (_) {} // read by early.js on the next page, before paint
+  return t;
+};
+
+// Per-item colours (Schedule Tracker palette). Themes that colour rows read the inline --c; others ignore it.
+BM.PALETTE = ['#FF5C8A', '#FFD23F', '#3EC1D3', '#7CFF6B', '#FF9F1C', '#B28DFF'];
+BM.colorFor = (i) => BM.PALETTE[Math.abs(Number(i) || 0) % BM.PALETTE.length];
+
+// Staggered entrance on first render. CSS decides whether .bm-enter animates (only the Pop! theme does).
+BM.enter = (els) => {
+  [...els].forEach((el, i) => {
+    el.classList.add('bm-enter');
+    el.style.animationDelay = `${Math.min(i, 12) * 70}ms`;
+    el.addEventListener('animationend', () => { el.classList.remove('bm-enter'); el.style.animationDelay = ''; }, { once: true });
+  });
+};
+
+// Reveal on scroll: each element fades up as it comes into view (with a short stagger for ones that
+// arrive together), then the helper classes are removed so hover transitions aren't delayed.
+// CSS decides whether .bm-reveal animates (only Pop! does); in other themes it's a no-op.
+BM.reveal = (els) => {
+  if (typeof IntersectionObserver !== 'function') return;
+  const io = new IntersectionObserver((entries) => {
+    let i = 0;
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      const el = e.target;
+      io.unobserve(el);
+      el.style.setProperty('--d', `${Math.min(i++, 6) * 80}ms`);
+      el.classList.add('is-in');
+      setTimeout(() => { el.classList.remove('bm-reveal', 'is-in'); el.style.removeProperty('--d'); }, 1400);
+    }
+  }, { rootMargin: '0px 0px -6% 0px' });
+  for (const el of els) { el.classList.add('bm-reveal'); io.observe(el); }
+};
+
+const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// Smoothly open or close a block by animating its height. done() runs at the end (or straight away
+// with reduced motion), so callers can add/remove their "collapsed" class there or before.
+BM.slide = (el, open, done) => {
+  if (!el || reduceMotion() || !el.animate) { done?.(); return; }
+  el.getAnimations?.().forEach((a) => a.cancel());
+  const full = `${el.scrollHeight}px`;
+  const frames = open ? [{ height: '0px', opacity: 0 }, { height: full, opacity: 1 }] : [{ height: full, opacity: 1 }, { height: '0px', opacity: 0 }];
+  el.style.overflow = 'hidden';
+  const a = el.animate(frames, { duration: open ? 320 : 240, easing: 'cubic-bezier(.2, .8, .2, 1)' });
+  a.onfinish = a.oncancel = () => { el.style.overflow = ''; done?.(); };
+};
+
+// A small burst of confetti squares from an element's centre (CSS shows it only in Pop!).
+BM.burst = (from) => {
+  if (reduceMotion()) return;
+  const b = from.getBoundingClientRect();
+  const wrap = BM.h('div', { class: 'bm-burst', 'aria-hidden': 'true', style: `left:${b.left + b.width / 2}px;top:${b.top + b.height / 2}px` });
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2 + Math.random() * 0.5;
+    const d = 26 + Math.random() * 22;
+    wrap.append(BM.h('i', { style: `--dx:${Math.cos(a) * d}px;--dy:${Math.sin(a) * d}px;--r:${Math.round(Math.random() * 240 - 120)}deg;background:${BM.colorFor(i)}` }));
+  }
+  document.body.append(wrap);
+  setTimeout(() => wrap.remove(), 800);
+};
+
+// One toast at a time, bottom centre, with an optional action button (e.g. Undo). Gone after ms.
+BM.toast = (message, actionLabel, onAction, ms = 5000) => {
+  document.querySelector('.bm-toast')?.remove();
+  const h = BM.h;
+  const t = h('div', { class: 'bm-toast bm-root', role: 'status' }, h('span', {}, message),
+    actionLabel ? h('button', { class: 'bm-toast-btn', onclick: () => { t.remove(); onAction(); } }, actionLabel) : null);
+  document.body.append(t);
+  setTimeout(() => t.remove(), ms);
+};
+
+BM.PIN_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3l6 6-3 1-4 4 1 5-2 2-4-4-5 5-1-1 5-5-4-4 2-2 5 1 4-4z"/></svg>';
 
 BM.isTyping = (e) => {
   const t = e.target;

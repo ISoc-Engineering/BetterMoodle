@@ -1,37 +1,26 @@
-/* BetterMoodle reskin of UCL's theme. Everything is scoped under html.bm, so switching off removes it all. */
-
-html.bm {
-  --bm-bg: #ffffff;
-  --bm-bg-soft: #f6f6f4;
-  --bm-line: #e6e6e3;
-  --bm-text: #1b1b1a;
-  --bm-muted: #6b6b68;
-  --bm-accent: #2a5bd7;
-  --bm-accent-soft: #eef2fc;
-  --bm-danger: #c4321b;
-  --bm-radius: 8px;
-  --bm-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --bm-navbar-h: 52px;
-}
+/* The reskin of UCL Moodle's own pages. Everything is scoped under html.bm, so switching the
+ * extension off removes it all. Values come from tokens.css; never hard-code colours here. */
 
 html.bm body {
   font-family: var(--bm-font);
+  font-weight: var(--bm-weight);
   color: var(--bm-text);
-  background: var(--bm-bg);
+  background: var(--bm-page);
   -webkit-font-smoothing: antialiased;
 }
 html.bm h1, html.bm h2, html.bm h3, html.bm h4, html.bm h5,
 html.bm .h1, html.bm .h2, html.bm .h3, html.bm .h4, html.bm .h5 {
-  font-family: var(--bm-font);
+  font-family: var(--bm-font-display);
   letter-spacing: -0.01em;
-  font-weight: 600;
+  font-weight: var(--bm-weight-head);
 }
 html.bm a { color: var(--bm-accent); }
+html.bm #page, html.bm #page-wrapper, html.bm #topofscroll, html.bm .main-inner { background: transparent; }
 
 /* ---- Navbar: slimmer, quieter ---- */
 html.bm #ucl-navbar {
-  background: var(--bm-bg) !important;
-  border-bottom: 1px solid var(--bm-line);
+  background: var(--bm-surface) !important;
+  border-bottom: var(--bm-border-strong) solid var(--bm-line);
   box-shadow: none !important;
   min-height: var(--bm-navbar-h);
 }
@@ -39,17 +28,27 @@ html.bm #ucl-navbar a, html.bm #ucl-navbar .nav-link, html.bm #ucl-navbar .btn,
 html.bm #ucl-navbar .icon, html.bm #ucl-navbar i { color: var(--bm-text) !important; }
 html.bm #ucl-navbar .navbar-brand img, html.bm #ucl-navbar img.logo,
 html.bm #ucl-navbar a[href$="/my/"] img, html.bm #ucl-navbar .ucl-logo img { filter: invert(1); height: 28px; width: auto; }
+/* UCL's theme sizes its logo itself, so ours needs !important to stick; then centre it in the bar. */
+html.bm #ucl-navbar :is(.navbar-brand, .ucl-logo, a[href$="/my/"]):has(img, svg) {
+  display: flex !important; align-items: center; align-self: center; height: var(--bm-navbar-h);
+  padding-top: 0 !important; padding-bottom: 0 !important; margin-top: 0 !important; margin-bottom: 0 !important;
+}
+html.bm #ucl-navbar :is(.navbar-brand, .ucl-logo, a[href$="/my/"]) :is(img, svg), html.bm #ucl-navbar img.logo {
+  height: 28px !important; max-height: 28px !important; width: auto !important; margin: 0 !important; position: static !important;
+}
 
 /* ---- Page chrome ---- */
 html.bm #ucl-footer, html.bm .footer-popover, html.bm #page-footer { display: none !important; }
 html.bm .card, html.bm .block, html.bm .btn, html.bm .dropdown-menu, html.bm .popover { box-shadow: none !important; }
-html.bm .card, html.bm section.block { border: 1px solid var(--bm-line); border-radius: var(--bm-radius); }
-html.bm .btn-primary { background: var(--bm-accent); border-color: var(--bm-accent); }
+html.bm .card, html.bm section.block {
+  border: var(--bm-border) solid var(--bm-line); border-radius: var(--bm-radius); background: var(--bm-surface);
+}
+html.bm .btn-primary { background: var(--bm-accent); border-color: var(--bm-accent); color: var(--bm-on-accent); }
 
 /* Course header: drop the big stock image, keep the title compact. */
 html.bm #course-header-bg { padding-top: 12px !important; margin-bottom: 4px !important; background: none !important; }
 html.bm #course-header-bg img, html.bm #course-header-bg [class*="image"], html.bm #course-header-bg [style*="background-image"] { display: none !important; }
-html.bm #course-header-bg h1 { font-size: 1.6rem; line-height: 1.25; margin: 0; }
+html.bm #course-header-bg h1 { font-size: 1.6rem; line-height: 1.25; margin: 0; text-transform: var(--bm-case-head); }
 html.bm #course-header-bg p { color: var(--bm-muted); font-size: .9rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 html.bm .secondary-navigation .nav-link { color: var(--bm-muted); }
 html.bm .secondary-navigation .nav-link.active { color: var(--bm-text); border-bottom-color: var(--bm-text); }
@@ -57,6 +56,24 @@ html.bm .secondary-navigation .nav-link.active { color: var(--bm-text); border-b
 /* Activity icons: grey and calm. */
 html.bm .activityiconcontainer, html.bm .activity-icon { background: transparent !important; }
 html.bm img.activityicon, html.bm .bm-icon { filter: grayscale(1) contrast(.9); opacity: .75; }
+
+/* Smooth page changes: Chrome cross-fades between Moodle pages instead of flashing white. The top bar
+ * stays put, and a course's name on the dashboard grows into the course page title (the matching
+ * view-transition-name is set by home.js and course.js). Off with reduced motion. */
+@view-transition { navigation: auto; }
+html.bm #ucl-navbar { view-transition-name: bm-navbar; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .22s; }
+::view-transition-group(*) { animation-duration: .32s; animation-timing-function: cubic-bezier(.2, .8, .2, 1); }
+@media (prefers-reduced-motion: reduce) {
+  @view-transition { navigation: none; }
+}
+
+/* Use the whole page. UCL marks course and forum pages "limitedwidth", which squeezes the content
+ * into a ~830px column; while one of our views is showing it gets the full width instead. */
+html.bm body:has(#bm-home, #bm-forum, #bm-course) :is(#topofscroll, .main-inner, #page-content, #region-main-box, #region-main, [role="main"]) {
+  max-width: none !important;
+}
+html.bm body:has(#bm-home, #bm-forum, #bm-course) #topofscroll { padding-left: 32px; padding-right: 32px; }
 
 /* Our views replace these when active (toggle back with "Classic view"). */
 html.bm .bm-replaced { display: none !important; }
@@ -77,4 +94,4 @@ html.bm.bm-embed #ucl-mobile-menu, html.bm.bm-embed #ucl-section-navigation, htm
 html.bm.bm-embed .course-content-header ~ nav { display: none !important; }
 html.bm.bm-embed #page, html.bm.bm-embed #page.drawers { margin: 0 !important; padding: 0 !important; height: 100vh; }
 html.bm.bm-embed #topofscroll { padding: 16px 20px !important; max-width: none !important; }
-html.bm.bm-embed body { background: var(--bm-bg); }
+html.bm.bm-embed body { background: var(--bm-surface); }

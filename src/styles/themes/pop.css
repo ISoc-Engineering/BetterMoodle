@@ -1,0 +1,362 @@
+/* "Pop!": the Schedule Tracker look. Spec: docs/SCHEDULE-TRACKER-STYLE.md (follow its values literally).
+ *
+ * Part 1 sets tokens, which restyles every component at once.
+ * Part 2 adds what tokens can't express: dot paper, coloured rows (--c), display type, stickers,
+ * pop-in entrances and the cursor ring. Everything is scoped to html.bm[data-bm-theme="pop"]. */
+
+/* ---------- Part 1: tokens ---------- */
+html.bm[data-bm-theme="pop"] {
+  --ink: #111;
+  --paper: #fff6e0;
+  --hot: #ff5c8a;
+  --sun: #ffd23f;
+  --sky: #3ec1d3;
+  --lime: #7cff6b;
+  --red: #e11d2e;
+
+  --bm-bg: var(--paper);
+  --bm-bg-soft: var(--sun);
+  --bm-surface: #fff;
+  --bm-canvas: var(--bm-page);
+  --bm-page: radial-gradient(circle at 1px 1px, rgba(0,0,0,.18) 1.2px, transparent 1.6px) 0 0 / 18px 18px, var(--paper);
+  --bm-line: var(--ink);
+  --bm-text: var(--ink);
+  --bm-muted: var(--ink);
+  --bm-accent: var(--hot);
+  --bm-accent-soft: var(--sun);
+  --bm-on-accent: var(--ink);
+  --bm-chip-on: var(--hot);
+  --bm-chip-on-text: var(--ink);
+  --bm-danger: var(--red);
+  --bm-overlay: rgba(17, 17, 17, .45);
+
+  --bm-font: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --bm-font-display: "Arial Black", Impact, "Helvetica Neue", system-ui, sans-serif;
+  --bm-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --bm-weight: 600;
+  --bm-weight-strong: 800;
+  --bm-weight-head: 900;
+  --bm-case-head: uppercase;
+
+  --bm-border: 3px;
+  --bm-border-strong: 4px;
+  --bm-radius: 20px;
+  --bm-radius-sm: 8px;
+  --bm-radius-lg: 20px;
+  --bm-shadow-panel: 10px 10px 0 var(--ink);
+  --bm-shadow: 3px 3px 0 rgba(0,0,0,.35);
+  --bm-shadow-hover: 5px 5px 0 rgba(0,0,0,.45);
+  --bm-lift: 2px;
+  --bm-tilt: -1.5deg;
+  --bm-ease: cubic-bezier(.3, 1.6, .5, 1);
+  --bm-fast: .15s;
+  --bm-section-pad: 14px;
+  --bm-section-gap: 14px;
+  --bm-show-course-img: block;
+}
+
+/* ---------- Part 2: personality ---------- */
+html.bm[data-bm-theme="pop"] body { font-weight: 600; }
+html.bm[data-bm-theme="pop"] ::selection { background: var(--hot); color: var(--ink); }
+html.bm[data-bm-theme="pop"] :is(.bm-root, .bm-viewer, .bm-palette) :focus-visible { outline: 4px solid var(--ink); outline-offset: 3px; }
+
+/* Moodle's own navbar becomes the striped sky header bar. */
+html.bm[data-bm-theme="pop"] #ucl-navbar {
+  background: var(--sky) repeating-linear-gradient(-45deg, transparent 0 14px, rgba(255,255,255,.22) 14px 28px) !important;
+}
+html.bm[data-bm-theme="pop"] #course-header-bg h1 {
+  font-size: clamp(1.8rem, 6vw, 3rem); line-height: .9; letter-spacing: -.03em; text-shadow: 3px 3px 0 #fff;
+}
+
+/* Headings: hero and panel titles. */
+html.bm[data-bm-theme="pop"] .bm-h2 { font-size: clamp(1.3rem, 2.2vw, 1.8rem); line-height: 1; letter-spacing: -.02em; text-shadow: 3px 3px 0 var(--sun); }
+html.bm[data-bm-theme="pop"] .bm-h3 { font-weight: 800; letter-spacing: .06em; }
+
+/* Buttons: black with white text; primary is pink. */
+html.bm[data-bm-theme="pop"] .bm-btn { background: var(--ink); color: #fff; padding: 10px 14px; line-height: 1; letter-spacing: .02em; }
+html.bm[data-bm-theme="pop"] .bm-btn:hover { background: var(--ink); color: #fff; }
+html.bm[data-bm-theme="pop"] :is(.bm-btn-primary, .bm-btn-primary:hover) { background: var(--hot); color: var(--ink); opacity: 1; }
+html.bm[data-bm-theme="pop"] .bm-link-btn { font-family: var(--bm-font-mono); font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+
+/* Tabs/chips: white pills, 4px shadow, pressed = pink. */
+html.bm[data-bm-theme="pop"] .bm-chip { color: var(--ink); font-size: 1rem; padding: 8px 14px; line-height: 1; box-shadow: 4px 4px 0 var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-chip:hover { box-shadow: 6px 6px 0 var(--ink); transform: translate(-2px, -2px) rotate(-2deg); }
+html.bm[data-bm-theme="pop"] .bm-chip:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-chip-pill { border-color: var(--ink); box-shadow: 4px 4px 0 var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-chips.has-pill .bm-chip[aria-pressed="true"]:hover { box-shadow: none; }
+
+/* Filter bar = the yellow "add form" block. */
+html.bm[data-bm-theme="pop"] .bm-filterbar {
+  top: 8px; padding: 14px; margin-bottom: 18px; background: var(--sun);
+  border: 4px solid var(--ink); border-radius: 14px; box-shadow: 6px 6px 0 var(--ink);
+}
+html.bm[data-bm-theme="pop"] .bm-input { font-weight: 700; padding: 10px 12px; border-radius: 8px; }
+html.bm[data-bm-theme="pop"] .bm-input::placeholder { color: rgba(0,0,0,.5); }
+html.bm[data-bm-theme="pop"] .bm-input:focus { outline: 4px solid var(--ink); outline-offset: 3px; border-color: var(--ink); }
+
+/* Course page sections are coloured blocks (--c). */
+html.bm[data-bm-theme="pop"] .bm-section {
+  overflow: hidden; background: var(--c, var(--hot)); color: var(--ink);
+  border: 4px solid var(--ink); border-radius: 14px; box-shadow: 6px 6px 0 var(--ink);
+  transition: box-shadow .15s, translate .15s var(--bm-ease);
+}
+html.bm[data-bm-theme="pop"] .bm-section { padding: 0; }
+html.bm[data-bm-theme="pop"] .bm-section:not(.is-collapsed) { box-shadow: 9px 9px 0 var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-section:hover { translate: -2px -2px; box-shadow: 9px 9px 0 var(--ink); background: var(--c, var(--hot)); }
+html.bm[data-bm-theme="pop"] .bm-section-head { padding: 14px 16px; font-size: clamp(1.05rem, 3.4vw, 1.5rem); line-height: 1.05; letter-spacing: -.01em; }
+html.bm[data-bm-theme="pop"] .bm-section-head::before { color: var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-section-head .bm-small {
+  margin-left: auto; font: 800 .8rem var(--bm-font-mono); background: var(--sun); color: var(--ink);
+  border: 2px solid var(--ink); border-radius: 6px; padding: 2px 8px; text-transform: uppercase;
+}
+html.bm[data-bm-theme="pop"] .bm-items { background: #fff; border-top: 4px solid var(--ink); padding-block: 12px; display: grid; gap: 8px; }
+html.bm[data-bm-theme="pop"] .bm-item-link { margin: 0; border: 3px solid var(--ink); border-radius: 8px; background: #fff; padding: 10px 12px; }
+html.bm[data-bm-theme="pop"] .bm-item-link:hover { background: var(--sun); }
+html.bm[data-bm-theme="pop"] .bm-item.is-active .bm-item-link { background: var(--c, var(--hot)); box-shadow: none; outline: 4px solid var(--ink); outline-offset: 2px; }
+html.bm[data-bm-theme="pop"] .bm-item-meta { font-weight: 800; text-transform: uppercase; color: var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-label { padding-left: 4px; }
+html.bm[data-bm-theme="pop"] .bm-subhead { padding: 6px 2px 0; color: var(--ink); font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+html.bm[data-bm-theme="pop"] .bm-icon { filter: none; opacity: 1; }
+
+/* Deadlines = event cards with a thick coloured left edge. */
+html.bm[data-bm-theme="pop"] .bm-due-items { display: grid; grid-template-columns: minmax(0, 1fr); gap: 7px; }
+html.bm[data-bm-theme="pop"] .bm-due-item {
+  margin: 0; padding: 6px 10px; background: #fff;
+  border: 2.5px solid var(--ink); border-left: 9px solid var(--c, var(--hot)); border-radius: 10px;
+}
+html.bm[data-bm-theme="pop"] .bm-due-item:hover { background: #fff; translate: -2px -2px; box-shadow: 3px 3px 0 var(--ink); transition: translate .15s var(--bm-ease), box-shadow .15s; }
+html.bm[data-bm-theme="pop"] .bm-due-group.is-overdue .bm-due-item {
+  border-color: var(--red); border-left-color: var(--red); box-shadow: 3px 3px 0 var(--red);
+  background: repeating-linear-gradient(-45deg, #ffe9e9 0 12px, #ffe0e0 12px 24px);
+}
+html.bm[data-bm-theme="pop"] .bm-due-count {
+  font-weight: 900; background: var(--ink); color: #fff; border: 2px solid var(--ink); border-radius: 999px; padding: 1px 8px;
+}
+html.bm[data-bm-theme="pop"] .bm-due-group.is-overdue .bm-due-count { background: var(--red); color: #fff; animation: bm-shake 1.6s infinite; }
+html.bm[data-bm-theme="pop"] .bm-due-pill { font-weight: 800; }
+html.bm[data-bm-theme="pop"] .bm-due-pill.is-overdue { border-color: var(--red); background: #ffe9e9; }
+html.bm[data-bm-theme="pop"] .bm-due-label { background: var(--sun); border: 2px solid var(--ink); border-radius: 6px; padding: 2px 8px; color: var(--ink); transform: rotate(-2deg); }
+
+/* Forum posts on the dashboard: cards with the course colour on the edge. */
+html.bm[data-bm-theme="pop"] .bm-news-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 7px; }
+html.bm[data-bm-theme="pop"] .bm-news-item { padding: 6px 10px; background: #fff; border: 2.5px solid var(--ink); border-left: 9px solid var(--c, var(--sky)); border-radius: 10px; }
+html.bm[data-bm-theme="pop"] .bm-news-item:hover { color: var(--ink); background: var(--sun); }
+
+/* Empty states: dashed box. */
+html.bm[data-bm-theme="pop"] :is(.bm-panel, .bm-sections) > p.bm-muted,
+html.bm[data-bm-theme="pop"] .bm-due-list > p.bm-muted {
+  text-align: center; padding: 28px 16px; background: #fff; border: 4px dashed var(--ink); border-radius: 14px;
+  font: 900 1.1rem var(--bm-font-display); text-transform: uppercase;
+}
+
+/* Viewer and palette. */
+html.bm[data-bm-theme="pop"] .bm-v-head { background: var(--sun); }
+html.bm[data-bm-theme="pop"] .bm-v-count { font-weight: 900; }
+html.bm[data-bm-theme="pop"] .bm-p-box { animation: bm-drop .3s var(--bm-ease); }
+html.bm[data-bm-theme="pop"] .bm-p-item { border: 3px solid transparent; }
+html.bm[data-bm-theme="pop"] .bm-p-item.is-sel { border-color: var(--ink); }
+
+/* Entrances: rows pop in once with a 70ms stagger (JS adds .bm-enter + animation-delay). */
+html.bm[data-bm-theme="pop"] .bm-enter { animation: bm-pop .5s var(--bm-ease) backwards; }
+
+/* Ticking a deadline off: lime fill, ink tick, and a confetti burst. */
+html.bm[data-bm-theme="pop"] .bm-check { width: 30px; height: 30px; color: var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-check svg { stroke-width: 2.6; }
+html.bm[data-bm-theme="pop"] .bm-check circle { fill: #fff; }
+html.bm[data-bm-theme="pop"] .bm-check:hover { scale: 1.12; transition: scale .15s var(--bm-ease); }
+html.bm[data-bm-theme="pop"] .bm-due-row.is-done .bm-check { color: var(--ink); animation: bm-thump .35s var(--bm-ease); }
+html.bm[data-bm-theme="pop"] .bm-due-row.is-done .bm-check circle { fill: var(--lime); }
+html.bm[data-bm-theme="pop"] .bm-due-row.is-done .bm-check path { stroke: var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-burst { display: block; position: fixed; z-index: 99998; width: 0; height: 0; pointer-events: none; }
+html.bm[data-bm-theme="pop"] .bm-burst i {
+  position: absolute; left: -4px; top: -4px; width: 8px; height: 8px; border: 2px solid var(--ink); border-radius: 2px;
+  animation: bm-burst .7s cubic-bezier(.15, .8, .3, 1) forwards;
+}
+@keyframes bm-burst { to { transform: translate(var(--dx), var(--dy)) rotate(var(--r)); opacity: 0; } }
+@keyframes bm-thump { 50% { scale: 1.3; } }
+
+/* Toast: ink slab with a sun Undo button. */
+html.bm[data-bm-theme="pop"] .bm-toast { background: var(--ink); color: #fff; border: 3px solid var(--ink); border-radius: 12px; box-shadow: 5px 5px 0 var(--hot); font-weight: 700; }
+html.bm[data-bm-theme="pop"] .bm-toast-btn { background: var(--sun); color: var(--ink); text-decoration: none; padding: 4px 10px; border: 2px solid #fff; border-radius: 8px; text-transform: uppercase; letter-spacing: .04em; }
+
+/* Forum feed: professional first. White post cards with Pop!'s ink border and a soft offset shadow,
+ * no tilting; colour is kept for the course rail, the forum tabs, avatars and the unread edge. */
+html.bm[data-bm-theme="pop"] .bm-forum-title { font: 900 clamp(2rem, 4.6vw, 3.2rem) / .95 var(--bm-font-display); letter-spacing: -.035em; text-shadow: 3px 3px 0 #fff; }
+html.bm[data-bm-theme="pop"] .bm-forum-code { color: var(--ink); font-weight: 800; }
+html.bm[data-bm-theme="pop"] .bm-forum-rail { background: #fff; }
+html.bm[data-bm-theme="pop"] .bm-rail-course { border: 3px solid transparent; border-radius: 10px; }
+html.bm[data-bm-theme="pop"] .bm-rail-course:hover { background: var(--sun); }
+html.bm[data-bm-theme="pop"] .bm-rail-course[aria-current="page"] { background: var(--c, var(--hot)); border-color: var(--ink); box-shadow: 3px 3px 0 var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-rail-code { color: var(--ink); font-weight: 800; }
+html.bm[data-bm-theme="pop"] .bm-rail-name { font-weight: 800; }
+html.bm[data-bm-theme="pop"] .bm-forum-tabs .bm-chip[aria-selected="true"] { background: var(--hot); border-color: var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-select { border: 3px solid var(--ink); border-radius: 10px; font-weight: 800; }
+html.bm[data-bm-theme="pop"] .bm-select-wrap .bm-muted { color: var(--ink); font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+html.bm[data-bm-theme="pop"] .bm-feed { gap: 18px; }
+html.bm[data-bm-theme="pop"] .bm-post { background: #fff; border: 3px solid var(--ink); border-radius: 14px; box-shadow: 5px 5px 0 var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-post.is-unread { border-left: 10px solid var(--hot); }
+html.bm[data-bm-theme="pop"] .bm-post.is-pinned { background: #fffbea; }
+html.bm[data-bm-theme="pop"] .bm-post-title { font-weight: 900; font-size: 1.2rem; }
+html.bm[data-bm-theme="pop"] .bm-post-foot { border-top: 2px dashed rgba(17,17,17,.35); }
+html.bm[data-bm-theme="pop"] .bm-post-action { font-weight: 800; }
+html.bm[data-bm-theme="pop"] .bm-post-action:hover:not(:disabled) { color: var(--ink); background: var(--sun); text-decoration: none; border-radius: 6px; }
+html.bm[data-bm-theme="pop"] .bm-post-action { padding: 4px 8px; }
+html.bm[data-bm-theme="pop"] .bm-post-body a, html.bm[data-bm-theme="pop"] .bm-reply-body a { color: var(--ink); text-decoration-color: var(--hot); text-decoration-thickness: 2px; }
+html.bm[data-bm-theme="pop"] .bm-avatar { border: 2.5px solid var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-replies .bm-replies { border-left: 3px solid var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-reply { background: var(--paper); border: 2px solid var(--ink); border-radius: 10px; }
+html.bm[data-bm-theme="pop"] .bm-badge { background: var(--hot); color: var(--ink); border: 2px solid var(--ink); font-weight: 800; }
+html.bm[data-bm-theme="pop"] .bm-tag { background: var(--sun); color: var(--ink); border: 2px solid var(--ink); font-weight: 800; text-transform: uppercase; }
+
+/* Dashboard: the Forums fold arrow and New posts. */
+html.bm[data-bm-theme="pop"] .bm-fold-head::after { color: var(--ink); font-size: 1rem; }
+html.bm[data-bm-theme="pop"] .bm-news-item.is-new { border-left-color: var(--hot); }
+/* Course cards: white, ink border, a thick band in the course colour; a button that has something new
+ * fills with the course colour and shows its count. */
+html.bm[data-bm-theme="pop"] .bm-course {
+  background: #fff; color: var(--ink); border: 3px solid var(--ink); border-top: 11px solid var(--c, var(--hot));
+  border-radius: 14px; box-shadow: 5px 5px 0 var(--ink); transition: translate .15s var(--bm-ease), box-shadow .15s;
+}
+html.bm[data-bm-theme="pop"] .bm-course:hover { translate: -2px -2px; box-shadow: 7px 7px 0 var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-course-code { color: var(--ink); font-weight: 800; text-transform: uppercase; }
+html.bm[data-bm-theme="pop"] .bm-course-name { font: 900 1.02rem / 1.1 var(--bm-font-display); text-transform: uppercase; letter-spacing: -.01em; }
+html.bm[data-bm-theme="pop"] .bm-course-week { color: var(--ink); font-weight: 700; }
+html.bm[data-bm-theme="pop"] .bm-cbtn { background: #fff; color: var(--ink); border: 2.5px solid var(--ink); border-radius: 8px; font-weight: 800; box-shadow: 2px 2px 0 var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-cbtn:hover { background: var(--sun); }
+html.bm[data-bm-theme="pop"] .bm-cbtn.has-count { background: var(--c, var(--hot)); border-color: var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-cbtn:active { translate: 1px 1px; box-shadow: 1px 1px 0 var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-count { background: var(--ink); color: #fff; border: 2px solid #fff; line-height: 16px; }
+html.bm[data-bm-theme="pop"] .bm-swatch-btn { width: 18px; height: 18px; border: 2.5px solid var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-swatch { border: 2.5px solid var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-sec-label { color: var(--ink); font-weight: 800; }
+html.bm[data-bm-theme="pop"] .bm-feedback-link {
+  background: var(--sun); color: var(--ink); border: 3px solid var(--ink); border-radius: 12px; box-shadow: 4px 4px 0 var(--ink);
+  font-weight: 900; text-transform: uppercase; transition: translate .15s var(--bm-ease), box-shadow .15s;
+}
+html.bm[data-bm-theme="pop"] .bm-feedback-link:hover { background: var(--sun); translate: -2px -2px; box-shadow: 6px 6px 0 var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-feedback-link span { color: var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-tag-new { background: var(--hot); color: var(--ink); border: 2px solid var(--ink); }
+
+/* Pinboard: cards pinned to dot paper. Notes are sticky notes in their own colour, slightly askew. */
+html.bm[data-bm-theme="pop"] .bm-pin-card {
+  background: #fff; border: 2.5px solid var(--ink); border-top: 9px solid var(--c, var(--sky)); border-radius: 10px;
+  box-shadow: 3px 3px 0 var(--ink); transition: translate .15s var(--bm-ease), box-shadow .15s;
+}
+html.bm[data-bm-theme="pop"] .bm-pin-card:hover { translate: -2px -2px; box-shadow: 5px 5px 0 var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-pin-card.is-note { background: var(--c); border-top-width: 2.5px; }
+html.bm[data-bm-theme="pop"] .bm-pin-card.is-note:focus-within { box-shadow: 5px 5px 0 var(--ink); }
+/* Room for the hard shadows, so cards never look stacked on top of each other. */
+html.bm[data-bm-theme="pop"] .bm-board { gap: 14px; }
+html.bm[data-bm-theme="pop"] .bm-col { gap: 30px; }
+html.bm[data-bm-theme="pop"] .bm-note-text { color: var(--ink); font-weight: 700; }
+html.bm[data-bm-theme="pop"] .bm-note-color { border: 2px solid var(--ink); background: #fff; }
+html.bm[data-bm-theme="pop"] .bm-pin-kind { color: var(--ink); font-weight: 800; text-transform: uppercase; font-size: .68rem; }
+html.bm[data-bm-theme="pop"] .bm-pin-x { color: var(--ink); font-weight: 900; }
+html.bm[data-bm-theme="pop"] .bm-tool-btn { border: 2.5px solid var(--ink); background: #fff; font-weight: 800; box-shadow: 2px 2px 0 var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-tool-btn:hover { background: var(--sun); }
+html.bm[data-bm-theme="pop"] .bm-tool-btn:active { translate: 1px 1px; box-shadow: 1px 1px 0 var(--ink); }
+
+/* Blocks: handle, menus, Customise, the course view switch. */
+html.bm[data-bm-theme="pop"] .bm-grip { color: var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-grip:hover, html.bm[data-bm-theme="pop"] .bm-grip[aria-expanded="true"] { background: var(--sun); }
+html.bm[data-bm-theme="pop"] .bm-menu { background: #fff; border: 3px solid var(--ink); border-radius: 12px; box-shadow: 6px 6px 0 var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-menu-item { font-weight: 700; border-radius: 6px; }
+html.bm[data-bm-theme="pop"] .bm-menu-item:hover, html.bm[data-bm-theme="pop"] .bm-menu-item:focus-visible { background: var(--sun); }
+html.bm[data-bm-theme="pop"] .bm-menu-item kbd { color: var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-menu-sep { border-top: 2px solid var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-custom-btn { background: var(--sun); border: 3px solid var(--ink); border-radius: 10px; box-shadow: 3px 3px 0 var(--ink); font-weight: 900; text-transform: uppercase; }
+html.bm[data-bm-theme="pop"] .bm-custom-btn:active, html.bm[data-bm-theme="pop"] .bm-custom-btn[aria-expanded="true"] { translate: 2px 2px; box-shadow: 1px 1px 0 var(--ink); background: var(--hot); }
+html.bm[data-bm-theme="pop"] .bm-custom-h { color: var(--ink); font-weight: 900; text-transform: uppercase; font-size: .74rem; }
+html.bm[data-bm-theme="pop"] .bm-opt { border: 2.5px solid var(--ink); border-radius: 8px; font-weight: 700; }
+html.bm[data-bm-theme="pop"] .bm-opt[aria-pressed="true"] { background: var(--sun); border-color: var(--ink); box-shadow: 3px 3px 0 var(--ink); }
+
+html.bm[data-bm-theme="pop"] .bm-seg { border: 2.5px solid var(--ink); border-radius: 8px; box-shadow: 2px 2px 0 var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-seg-btn { color: var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-seg-btn + .bm-seg-btn { border-left: 2.5px solid var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-seg-btn[aria-pressed="true"] { background: var(--hot); color: var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-strip-btn { border: 2.5px solid var(--ink); color: var(--ink); box-shadow: 2px 2px 0 var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-strip-btn:active:not(:disabled) { translate: 2px 2px; box-shadow: none; }
+html.bm[data-bm-theme="pop"] .bm-drop-line { background: var(--hot); height: 6px; border: 2px solid var(--ink); border-radius: 4px; }
+html.bm[data-bm-theme="pop"] .bm-layout.is-arranging .bm-col, html.bm[data-bm-theme="pop"] :is(.bm-col-empty, .bm-top-drop) { outline-color: var(--ink); border-color: var(--ink); color: var(--ink); font-weight: 800; }
+html.bm[data-bm-theme="pop"] .bm-pin-sm { color: var(--ink); }
+
+/* Course page: progress rings, pins, Quick look. */
+html.bm[data-bm-theme="pop"] .bm-ring { color: var(--ink); background: #fff; border: 2px solid var(--ink); border-radius: 999px; padding: 1px 6px 1px 2px; }
+html.bm[data-bm-theme="pop"] .bm-ring-track { stroke: rgba(17,17,17,.15); }
+html.bm[data-bm-theme="pop"] .bm-ring-fill { stroke: var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-ring.is-full { background: var(--lime); }
+html.bm[data-bm-theme="pop"] .bm-section-head .bm-ring { margin-left: auto; }
+html.bm[data-bm-theme="pop"] .bm-section-head .bm-ring + .bm-small { margin-left: 8px; }
+html.bm[data-bm-theme="pop"] .bm-pin { border: 2px solid var(--ink); color: var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-pin[aria-pressed="true"] { background: var(--hot); color: var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-ql-box { border: 4px solid var(--ink); border-radius: 18px; box-shadow: 10px 10px 0 var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-ql-head { background: var(--sun); border-bottom: 4px solid var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-ql-title { font-weight: 900; text-transform: uppercase; }
+html.bm[data-bm-theme="pop"] .bm-post.is-target { outline: 4px solid var(--hot); outline-offset: 4px; }
+
+/* Course sections rise into place as you scroll to them (JS: BM.reveal adds .bm-reveal, then .is-in). */
+html.bm[data-bm-theme="pop"] .bm-reveal { opacity: 0; translate: 0 32px; rotate: -1deg; }
+html.bm[data-bm-theme="pop"] .bm-reveal.is-in {
+  opacity: 1; translate: none; rotate: none;
+  transition: opacity .4s ease var(--d, 0s), translate .65s var(--bm-ease) var(--d, 0s), rotate .65s var(--bm-ease) var(--d, 0s);
+}
+
+/* Cursor (src/features/cursor.js): a 30px ring centred on the pointer.
+ * The system pointer is hidden only while ours is showing (html.bm-cursor-on), and never over text
+ * fields, so typing still gets the normal text cursor. */
+html.bm-cursor-on, html.bm-cursor-on * { cursor: none !important; }
+html.bm-cursor-on :is(input:not([type="checkbox"], [type="radio"], [type="button"], [type="submit"], [type="range"]), textarea, [contenteditable=""], [contenteditable="true"]) { cursor: text !important; }
+html.bm[data-bm-theme="pop"] .bm-cursor {
+  position: fixed; top: 0; left: 0; z-index: 99999; width: 30px; height: 30px; margin: -15px 0 0 -15px;
+  pointer-events: none; opacity: 0; transition: opacity .2s;
+}
+html.bm[data-bm-theme="pop"] .bm-cursor::before {
+  content: ""; display: block; width: 100%; height: 100%; box-sizing: border-box; border: 2.5px solid var(--ink); border-radius: 50%;
+  background: rgba(255,210,63,0); transition: transform .2s var(--bm-ease), background .2s;
+}
+html.bm[data-bm-theme="pop"] .bm-cursor.is-on { opacity: 1; }
+html.bm[data-bm-theme="pop"] .bm-cursor.is-hot::before { transform: scale(1.5); background: rgba(255,210,63,.5); }
+html.bm[data-bm-theme="pop"] .bm-cursor.is-down::before { transform: scale(.75); background: rgba(255,92,138,.6); }
+html.bm:not([data-bm-theme="pop"]) .bm-cursor { display: none; }
+
+@keyframes bm-pop { from { opacity: 0; transform: translateY(24px) rotate(-2deg) scale(.95); } to { opacity: 1; transform: none; } }
+@keyframes bm-drop { from { opacity: 0; transform: translateY(-14px) scale(.97); } }
+@keyframes bm-shake { 0%, 84%, 100% { transform: none; } 88% { transform: translateX(-3px) rotate(-3deg); } 92% { transform: translateX(3px) rotate(3deg); } 96% { transform: translateX(-2px); } }
+
+/* Small screens: borders 4 -> 3px, big shadows 10 -> 6px. */
+@media (max-width: 560px) {
+  html.bm[data-bm-theme="pop"] { --bm-border-strong: 3px; --bm-shadow-panel: 6px 6px 0 var(--ink); }
+  html.bm[data-bm-theme="pop"] .bm-panel { padding: 12px; }
+}
+
+/* Reduced motion is mandatory. */
+@media (prefers-reduced-motion: reduce) {
+  html.bm[data-bm-theme="pop"] *, html.bm[data-bm-theme="pop"] *::before, html.bm[data-bm-theme="pop"] *::after {
+    animation: none !important; transition: none !important;
+  }
+  html.bm[data-bm-theme="pop"] .bm-cursor { display: none; }
+  html.bm[data-bm-theme="pop"] .bm-reveal { opacity: 1; translate: none; rotate: none; }
+}
+
+/* Dashboard panels (style guide 4: big panels = 4px ink outline, 10px hard shadow, 20px corners).
+ * Each block's name is a sticker in its own colour, tilted like the due labels. */
+html.bm[data-bm-theme="pop"] .bm-block:not(.is-bare) {
+  padding: 14px 18px 20px; background: var(--paper); border: 4px solid var(--ink); border-radius: 20px; box-shadow: 10px 10px 0 var(--ink);
+}
+html.bm[data-bm-theme="pop"] .bm-col, html.bm[data-bm-theme="pop"] .bm-top-row { gap: 34px; }
+html.bm[data-bm-theme="pop"] .bm-home-layout { row-gap: 34px; }
+html.bm[data-bm-theme="pop"] .bm-top-row.has-blocks { margin-bottom: 34px; }
+html.bm[data-bm-theme="pop"] .bm-block-head { margin-bottom: 16px; }
+html.bm[data-bm-theme="pop"] .bm-block .bm-sec-label {
+  display: inline-block; padding: 3px 10px; background: var(--tag, var(--sun)); color: var(--ink);
+  border: 2px solid var(--ink); border-radius: 6px; box-shadow: 3px 3px 0 var(--ink);
+  font: 900 .8rem var(--bm-font-mono); letter-spacing: .04em; rotate: -2deg;
+}
+html.bm[data-bm-theme="pop"] [data-block="courses"] { --tag: var(--hot); }
+html.bm[data-bm-theme="pop"] [data-block="todo"] { --tag: var(--sun); }
+html.bm[data-bm-theme="pop"] [data-block="forums"] { --tag: var(--sky); }
+html.bm[data-bm-theme="pop"] [data-block="pinboard"] { --tag: var(--lime); }
+html.bm[data-bm-theme="pop"] .bm-block.is-folded .bm-block-head { margin-bottom: 0; }
+html.bm[data-bm-theme="pop"] .bm-layout.is-editing .bm-block { outline: 3px dashed var(--ink); outline-offset: 7px; }
+html.bm[data-bm-theme="pop"] .bm-gutter::before { background: var(--hot); width: 6px; border: 2px solid var(--ink); }
+html.bm[data-bm-theme="pop"] .bm-block:is(.is-drop-left, .is-drop-right)::after { background: var(--hot); width: 8px; border: 2px solid var(--ink); }

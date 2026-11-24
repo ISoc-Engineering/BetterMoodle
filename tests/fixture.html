@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fake UCL Moodle</title>
+<script>
+// A stand-in for a UCL Moodle page. Served for /my/ and /course/view.php by tests/run.py.
+// Query flags (added by tests/index.html): theme=pop|soft, enabled=0, aggressive=1, storage=fail, forumapi=fail
+const flags = new URLSearchParams(location.search);
+window.errors = [];
+addEventListener('error', (e) => errors.push(e.message));
+// Chrome's own note when a page change skips its cross-fade (not our code) isn't a page error.
+addEventListener('unhandledrejection', (e) => { if (!/ViewTransition|Transition was aborted/.test(String(e.reason))) errors.push(String(e.reason)); });
+
+// chrome.* stub: storage.local with onChanged, runtime.getURL.
+const store = {};
+if (flags.get('theme')) store.theme = flags.get('theme');
+if (flags.get('enabled') === '0') store.enabled = false;
+if (flags.get('aggressive') === '1') store.aggressive = true;
+// seenbase=<ids>: what you'd seen in COMP0002 on your last visit (so the rest count as new).
+if (flags.get('seenbase')) store['u7:seenfiles:101'] = { t: Date.now(), v: flags.get('seenbase').split(',') };
+const listeners = [];
+const fail = () => { if (flags.get('storage') === 'fail') throw new Error('Storage unavailable'); };
+window.chrome = {
+  runtime: { getURL: (p) => `${location.origin}/${p}` },
+  storage: {
+    local: {
+      async get(keys) {
+        fail();
+        const list = keys == null ? Object.keys(store) : Array.isArray(keys) ? keys : [keys];
+        return Object.fromEntries(list.filter((k) => k in store).map((k) => [k, structuredClone(store[k])]));
+      },
+      async set(values) {
+        fail();
+        const changes = {};
+        for (const [k, v] of Object.entries(values)) { changes[k] = { oldValue: store[k], newValue: v }; store[k] = structuredClone(v); }
+        listeners.forEach((fn) => fn(changes, 'local'));
+      },
+    },
+    onChanged: { addListener: (fn) => listeners.push(fn) },
+  },
+};
+// The page's own localStorage mirrors (bm:off, bm:theme) must not leak between test frames.
+try { localStorage.clear(); } catch (_) {}
+
+// forumpages=fail: the forum pages themselves fail to load (to test the forum view's fallback).
+if (flags.get('forumpages') === 'fail') {
+  const real0 = window.fetch;
+  window.fetch = (url, opts) => /\/mod\/(forum|hsuforum)\/(view|discuss)\.php/.test(String(url)) ? Promise.resolve(new Response('', { status: 500 })) : real0(url, opts);
+}
+// Optionally break the forum web services so the dashboard's scraping fallback is exercised.
+if (flags.get('forumapi') === 'fail') {
+  const real = window.fetch;
+  window.fetch = (url, opts) => /info=mod_forum_/.test(String(url))
+    ? Promise.resolve(new Response(JSON.stringify([{ error: true, exception: { message: 'Access control exception' } }]), { status: 200 }))
+    : real(url, opts);
+}
+</script>
+<script>var M = {}; M.cfg = {"wwwroot":"","sesskey":"sk123","userId":7,"courseId":101};</script>
+</head>
+<body>
+<nav id="ucl-navbar"><a href="/my/">UCL Moodle</a> <a href="/my/courses.php">My courses</a> <a href="/local/ucl_tracker/index.php">Feedback tracker</a></nav>
+<div id="page-wrapper"><div id="page"><div id="topofscroll">
+  <div id="page-content"></div>
+</div></div></div>
+<script>
+const content = document.getElementById('page-content');
+// nocontent=1: like some real UCL pages, there's no #page-content, only #region-main.
+if (flags.get('nocontent') === '1') content.id = 'region-main';
+if (location.pathname.startsWith('/my/')) {
+  document.body.id = 'page-my-index';
+  // Stock dashboard blocks: the announcements fallback reads these. Includes a duplicate, an external link and a javascript: link.
+  content.innerHTML = `
+    <section data-block="news_items"><ul>
+      <li class="post"><div class="head">Course team</div><a href="/mod/forum/discuss.php?d=55">Week one announcement</a></li>
+      <li><a href="https://external.example/mod/forum/discuss.php?d=66">External post</a></li>
+      <li><a href="javascript:alert(1)">Unsafe post</a></li>
+    </ul></section>
+    <section data-block="recent_activity"><a href="/mod/forum/discuss.php?d=55">Week one announcement</a></section>
+    <p id="stock">Stock dashboard</p>`;
+} else if (/^\/mod\/(forum|hsuforum)\//.test(location.pathname)) {
+  const hsu = location.pathname.startsWith('/mod/hsuforum/');
+  document.body.id = location.pathname.endsWith('index.php') ? 'page-mod-forum-index' : hsu ? 'page-mod-hsuforum-view' : 'page-mod-forum-view';
+  // flags: course=<id> for pages that belong to another course (Advanced Forum lives in 102 here)
+  document.body.classList.add(`course-${flags.get('course') || 101}`);
+  content.innerHTML = '<p id="stock">Stock forum page</p>';
+} else {
+  document.body.id = 'page-course-view-topics';
+  document.body.classList.add('course-101');
+  content.innerHTML = '<p id="stock">Stock course page</p>';
+}
+
+// Load the extension exactly as the manifest lists it, in order.
+(async () => {
+  const m = await (await fetch('/manifest.json')).json();
+  const [early, idle] = m.content_scripts;
+  for (const href of early.css) document.head.append(Object.assign(document.createElement('link'), { rel: 'stylesheet', href: '/' + href }));
+  const load = (src) => new Promise((ok, bad) => document.head.append(Object.assign(document.createElement('script'), { src: '/' + src, onload: ok, onerror: () => bad(new Error('missing ' + src)) })));
+  for (const s of early.js) await load(s);
+  for (const s of idle.js) await load(s);
+  window.loaded = true;
+})().catch((e) => errors.push(e.message));
+</script>
+<script src="/tests/checks.js"></script>
+</body>
+</html>

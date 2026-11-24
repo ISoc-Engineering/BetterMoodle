@@ -1,4 +1,4 @@
-// Entry point: checks the on/off switch, then routes features by Moodle's <body id>.
+// Entry point: checks the on/off switch and theme, then routes features by Moodle's <body id>.
 var BM = globalThis.BM;
 
 (async () => {
@@ -7,23 +7,34 @@ var BM = globalThis.BM;
 
   // Source of truth is chrome.storage (set by the popup); mirror it to localStorage for early.js.
   let s = {};
-  try { s = await chrome.storage.local.get(['enabled', 'aggressive']); } catch (_) {}
+  try { s = await chrome.storage.local.get(['enabled', 'aggressive', 'theme']); } catch (_) {}
   const enabled = s.enabled !== false;
-  BM.settings = { aggressive: enabled && s.aggressive === true };
+  BM.settings = { aggressive: enabled && s.aggressive === true, theme: s.theme || 'pop' };
   try { localStorage.setItem('bm:off', enabled ? '0' : '1'); } catch (_) {}
   try {
-    chrome.storage.onChanged.addListener((ch) => { if ('enabled' in ch || 'aggressive' in ch) location.reload(); });
+    chrome.storage.onChanged.addListener((ch) => {
+      if ('enabled' in ch || 'aggressive' in ch) { location.reload(); return; }
+      // Themes are pure CSS, so they switch live without a reload.
+      if ('theme' in ch) { BM.settings.theme = BM.applyTheme(ch.theme.newValue); BM.cursor?.sync(); }
+    });
   } catch (_) {}
-  if (!enabled) { root.classList.remove('bm'); return; }
+  if (!enabled) { root.classList.remove('bm'); delete root.dataset.bmTheme; return; }
   root.classList.add('bm');
+  BM.settings.theme = BM.applyTheme(BM.settings.theme);
+  BM.cursor?.init();
 
   if (!BM.cfg().sesskey || !BM.cfg().userId) return; // logged out: reskin only
+  await Promise.all([BM.colors.load(), BM.opened.load()]);
+  BM.app.init();
 
   const id = document.body.id;
   try {
     BM.palette.init();
     if (id === 'page-my-index') await BM.home.init();
     else if (/^page-course-view-/.test(id)) await BM.course.init(BM.courseIdFromBody());
+    // Forum pages are matched by address too, in case UCL's theme gives them a different body id.
+    // Advanced Forum (mod/hsuforum, UCL's Q&A forums) list pages open the same feed.
+    else if (/^page-mod-(forum|hsuforum)-(view|index)$/.test(id) || /\/mod\/(forum\/(view|index)|hsuforum\/view)\.php$/.test(location.pathname)) await BM.forum.init();
   } catch (e) {
     console.warn('[BetterMoodle] feature failed; leaving the stock page alone', e);
   }

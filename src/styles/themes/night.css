@@ -1,0 +1,38 @@
+/* "Night": dark, for evenings. Tokens first, then the Moodle pieces that paint themselves white
+ * (Bootstrap cards, menus, forms, tables), so pages don't flash bright patches. */
+
+html.bm[data-bm-theme="night"] {
+  --bm-canvas: #111418;
+  color-scheme: dark;
+  --bm-bg: #16191e;
+  --bm-bg-soft: #20252c;
+  --bm-surface: #1b1f25;
+  --bm-line: #2f353e;
+  --bm-text: #e4e7eb;
+  --bm-muted: #99a2ad;
+  --bm-accent: #8ab4ff;
+  --bm-accent-soft: #1e2a3d;
+  --bm-on-accent: #0f1522;
+  --bm-chip-on: #e4e7eb;
+  --bm-chip-on-text: #16191e;
+  --bm-danger: #ff8a75;
+  --bm-overlay: rgba(0, 0, 0, .55);
+  --bm-radius: 10px;
+}
+
+/* UCL's logo: base.css inverts it for a light bar; on a dark bar it stays as it is. */
+html.bm[data-bm-theme="night"] #ucl-navbar :is(.navbar-brand, .ucl-logo, a[href$="/my/"]) :is(img, svg),
+html.bm[data-bm-theme="night"] #ucl-navbar img.logo { filter: none; }
+
+html.bm[data-bm-theme="night"] :is(.bg-white, .bg-light, .card, .card-header, .card-footer, .dropdown-menu, .popover,
+  .modal-content, .list-group-item, .drawer, .page-header-headings, #page-header, .course-content, .activity-item,
+  .table, .generaltable, .generaltable th, .generaltable td, .forumpost, .forum-post-container) {
+  background-color: var(--bm-surface) !important; color: var(--bm-text) !important; border-color: var(--bm-line) !important;
+}
+html.bm[data-bm-theme="night"] :is(.form-control, .custom-select, .form-select, input[type="text"], input[type="search"], textarea:not(.bm-note-text), select) {
+  background-color: var(--bm-bg-soft); color: var(--bm-text); border-color: var(--bm-line);
+}
+html.bm[data-bm-theme="night"] :is(.text-muted, .text-secondary, .dimmed_text) { color: var(--bm-muted) !important; }
+html.bm[data-bm-theme="night"] :is(.dropdown-item, .nav-link, .page-link) { color: var(--bm-text); }
+html.bm[data-bm-theme="night"] :is(.dropdown-item:hover, .dropdown-item:focus, .list-group-item-action:hover) { background-color: var(--bm-bg-soft); color: var(--bm-text); }
+html.bm[data-bm-theme="night"] img.activityicon, html.bm[data-bm-theme="night"] .bm-icon { filter: grayscale(1) invert(1) contrast(.9); }

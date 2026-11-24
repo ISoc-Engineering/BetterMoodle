@@ -1,0 +1,22 @@
+/* "Soft": Harris's calm blue palette (from the harris branch's Minimal theme).
+ * Tokens only: this file shows how small a theme can be. */
+
+html.bm[data-bm-theme="soft"] {
+  --bm-canvas: #e8eef5;
+  --bm-bg: #f4f7fb;
+  --bm-bg-soft: #edf3f8;
+  --bm-surface: #ffffff;
+  --bm-line: #d7e2ec;
+  --bm-text: #203244;
+  --bm-muted: #64798d;
+  --bm-accent: #315f85;
+  --bm-accent-soft: #e2edf6;
+  --bm-chip-on: #a9cbe7;
+  --bm-chip-on-text: #203244;
+  --bm-weight-strong: 600;
+  --bm-radius: 12px;
+  --bm-radius-sm: 8px;
+  --bm-shadow: 0 2px 0 var(--bm-line);
+  --bm-shadow-hover: 0 3px 0 var(--bm-line);
+  --bm-show-course-img: block;
+}

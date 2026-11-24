@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "BetterMoodle (UCL)",
-  "version": "0.1.1",
-  "description": "Unofficial. A minimal reskin of UCL Moodle: deadlines first, every course file on one page, a side viewer and Ctrl+K search.",
+  "version": "0.2.0",
+  "description": "Unofficial. A minimal reskin of UCL Moodle: deadlines first, every course file on one page, a side viewer, Ctrl+K search, a dashboard you can arrange and five themes.",
   "icons": {
     "16": "icons/16.png",
     "48": "icons/48.png",
@@ -27,8 +27,18 @@
         "src/early.js"
       ],
       "css": [
-        "src/styles/theme.css",
-        "src/styles/ui.css"
+        "src/styles/tokens.css",
+        "src/styles/base.css",
+        "src/styles/components/common.css",
+        "src/styles/components/home.css",
+        "src/styles/components/course.css",
+        "src/styles/components/forum.css",
+        "src/styles/components/viewer.css",
+        "src/styles/components/palette.css",
+        "src/styles/themes/soft.css",
+        "src/styles/themes/sage.css",
+        "src/styles/themes/night.css",
+        "src/styles/themes/pop.css"
       ],
       "run_at": "document_start",
       "all_frames": true
@@ -42,10 +52,17 @@
         "src/lib/store.js",
         "src/lib/api.js",
         "src/lib/course-data.js",
+        "src/lib/forum-data.js",
+        "src/lib/personal.js",
         "src/features/viewer.js",
+        "src/features/quicklook.js",
         "src/features/course.js",
+        "src/features/layout.js",
         "src/features/home.js",
+        "src/features/forum.js",
         "src/features/palette.js",
+        "src/features/cursor.js",
+        "src/features/app.js",
         "src/main.js"
       ],
       "run_at": "document_idle"

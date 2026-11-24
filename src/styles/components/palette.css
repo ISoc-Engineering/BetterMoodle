@@ -1,0 +1,28 @@
+/* Ctrl/Cmd+K search palette. Tokens only. */
+
+html.bm .bm-palette {
+  position: fixed; inset: 0; z-index: 2000; background: var(--bm-overlay);
+  display: flex; justify-content: center; align-items: flex-start; padding-top: 12vh; font-family: var(--bm-font);
+}
+html.bm .bm-palette[hidden] { display: none; }
+html.bm .bm-p-box {
+  width: min(640px, calc(100vw - 32px)); background: var(--bm-surface); overflow: hidden;
+  border: var(--bm-border-strong) solid var(--bm-line); border-radius: var(--bm-radius-lg); box-shadow: var(--bm-shadow-panel);
+}
+html.bm .bm-p-input {
+  width: 100%; border: 0; border-bottom: var(--bm-border) solid var(--bm-line); padding: 16px 18px;
+  font: 1.05rem var(--bm-font); outline: none; color: var(--bm-text); background: var(--bm-surface);
+}
+html.bm .bm-p-list { list-style: none; margin: 0; max-height: 55vh; overflow-y: auto; padding: 6px; }
+html.bm .bm-p-item {
+  display: grid; grid-template-columns: 84px 1fr; column-gap: 10px; padding: 8px 10px;
+  border-radius: var(--bm-radius-sm); cursor: pointer; color: var(--bm-text);
+}
+html.bm .bm-p-item.is-sel { background: var(--bm-accent-soft); }
+html.bm .bm-p-kind {
+  grid-row: span 2; padding-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font: var(--bm-weight-head) .72rem var(--bm-font-mono); text-transform: uppercase; letter-spacing: .04em; color: var(--bm-muted);
+}
+html.bm .bm-p-title { font-weight: var(--bm-weight-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.bm .bm-p-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.bm .bm-p-hint { padding: 8px 18px; border-top: var(--bm-border) solid var(--bm-line); }

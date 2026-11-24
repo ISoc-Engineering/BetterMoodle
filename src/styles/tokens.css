@@ -1,0 +1,61 @@
+/* Design tokens: the ONLY place colours, borders, shadows, radii, fonts and motion are defined.
+ *
+ * Components (components/*.css) and the Moodle reskin (base.css) use these variables and never
+ * hard-code a value. A theme (themes/*.css) overrides tokens under html.bm[data-bm-theme="<name>"],
+ * and only adds extra rules for personality that a token can't express.
+ *
+ * Default values below = the "Minimal" theme. */
+
+html.bm {
+  /* Colour */
+  --bm-bg: #ffffff;            /* page and panel background */
+  --bm-bg-soft: #f6f6f4;       /* hover fills, quiet surfaces */
+  --bm-surface: #ffffff;       /* panels, cards, the viewer */
+  --bm-canvas: #f3f3f0;        /* behind the dashboard and forum panels, a shade off the surface */
+  --bm-page: var(--bm-bg);     /* what's behind everything (can be a pattern) */
+  --bm-line: #e6e6e3;          /* every border */
+  --bm-text: #1b1b1a;
+  --bm-muted: #6b6b68;
+  --bm-accent: #2a5bd7;        /* links, primary buttons, focus */
+  --bm-accent-soft: #eef2fc;   /* selected rows */
+  --bm-on-accent: #ffffff;     /* text on --bm-accent */
+  --bm-chip-on: var(--bm-text);      /* pressed chip background */
+  --bm-chip-on-text: var(--bm-bg);   /* pressed chip text */
+  --bm-danger: #c4321b;
+  --bm-overlay: rgba(20, 20, 20, .28);
+
+  /* Type */
+  --bm-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --bm-font-display: var(--bm-font);  /* headings, section titles, buttons */
+  --bm-font-mono: var(--bm-font);     /* labels, dates, countdowns */
+  --bm-weight: 400;                   /* body text */
+  --bm-weight-strong: 500;            /* item names */
+  --bm-weight-head: 600;              /* headings, buttons */
+  --bm-case-head: none;               /* text-transform for display text */
+
+  /* Shape */
+  --bm-border: 1px;            /* small things: buttons, inputs, chips, rows */
+  --bm-border-strong: 1px;     /* big things: panels, the viewer, the palette */
+  --bm-radius: 8px;            /* panels */
+  --bm-radius-sm: 6px;         /* rows, buttons, inputs */
+  --bm-radius-lg: 12px;        /* the Ctrl+K palette */
+  --bm-radius-pill: 999px;     /* chips, due pills */
+
+  /* Depth: shadows are hard offsets in themes that use them, "none" here */
+  --bm-shadow-panel: none;
+  --bm-shadow: none;           /* rows and buttons at rest */
+  --bm-shadow-hover: none;
+  --bm-lift: 0px;              /* how far hovered things move up-left */
+  --bm-tilt: 0deg;             /* how far hovered things rotate */
+
+  /* Motion */
+  --bm-ease: ease;
+  --bm-fast: .12s;
+
+  /* Layout */
+  --bm-navbar-h: 52px;
+  --bm-section-pad: 0px;       /* inner padding of a course section (themes that box sections use > 0) */
+
+  /* Optional pieces a theme can switch on (display values) */
+  --bm-show-course-img: none;  /* course cover images on the dashboard */
+}
